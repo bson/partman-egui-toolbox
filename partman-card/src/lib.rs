@@ -87,6 +87,10 @@ pub struct Layout {
     pub fitted: bool,
     #[serde(skip)]
     drag: Option<Drag>,
+    /// The stacks, and whether fitted, as they were when the drag began,
+    /// for Escape to put back
+    #[serde(skip)]
+    before: Option<(Vec<Stack>, bool)>,
     /// The height each card's contents took last frame, which a fitted
     /// stack, other than the last, is sized to
     #[serde(skip)]
@@ -308,6 +312,22 @@ impl Layout {
         tab_rects(s.rect(), &s.cards, width).iter().filter(|r| r.center().x < x).count()
     }
 
+    /// Starts a drag, keeping the layout as it is to go back to.
+    fn begin(&mut self, drag: Drag) {
+        self.before = Some((self.stacks.clone(), self.fitted));
+        self.drag = Some(drag);
+    }
+
+    /// Ends the drag under way, the layout put back as it was before it;
+    /// whether there was one.
+    pub fn cancel_drag(&mut self) -> bool {
+        let Some((stacks, fitted)) = self.before.take().filter(|_| self.drag.is_some()) else { return false };
+        self.stacks = stacks;
+        self.fitted = fitted;
+        self.drag = None;
+        true
+    }
+
     /// Follows the drag to p (on the board), finishing it once released;
     /// whether the layout changed for good.
     fn drag_to(&mut self, p: Option<Pos2>, down: bool, area: Vec2, width: &impl Fn(&str) -> f32) -> bool {
@@ -364,6 +384,7 @@ impl Layout {
             return false;
         }
         self.drag = None;
+        self.before = None;
         match drag {
             // Let go before deciding: a click, which the tab takes
             Drag::Pressed { .. } => false,
@@ -405,6 +426,11 @@ pub fn board(ui: &mut Ui, t: &Colors, layout: &mut Layout, cards: &[Card], defau
         let origin = ui.cursor().min.to_vec2();
         let (pointer, down, press) = ui.input(|i| (i.pointer.latest_pos(), i.pointer.primary_down(), i.pointer.press_origin()));
         let on_board = |p: Pos2| p - origin;
+        // Taken only while dragging, so Escape is the app's otherwise. The
+        // pointer's still down, but nothing follows it until it's let go
+        if layout.drag.is_some() && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+            layout.cancel_drag();
+        }
         changed |= layout.drag_to(pointer.map(on_board), down, area, &width);
         let extent = layout.stacks.iter().fold(area, |e, s| e.max(s.rect().max.to_vec2()));
         ui.allocate_space(extent);
@@ -509,7 +535,7 @@ pub fn board(ui: &mut Ui, t: &Colors, layout: &mut Layout, cards: &[Card], defau
         }
         if let Some((i, drag)) = start {
             let j = layout.raise(i);
-            layout.drag = Some(match drag {
+            layout.begin(match drag {
                 Drag::Pressed { key, at, tab, .. } => Drag::Pressed { stack: j, key, at, tab },
                 Drag::Move { grab, card, .. } => Drag::Move { stack: j, grab, card },
                 Drag::Resize { grab, .. } => Drag::Resize { stack: j, grab },
@@ -740,6 +766,70 @@ mod tests {
         assert!(l.drag_to(Some(bar), false, vec2(800.0, 600.0), &w));
         assert_eq!(l.stacks.len(), 2);
         assert!(l.stacks[0].cards.contains(&"c".to_string()) && l.stacks[0].top == "c");
+    }
+
+    /// Escape mid-drag puts back a card taken off, or tabs reordered.
+    #[test]
+    fn a_cancelled_drag_puts_the_layout_back() {
+        let mut l = layout();
+        let was = l.stacks.clone();
+        let w = |_: &str| 20.0;
+        let tab = tab_rects(l.stacks[1].rect(), &l.stacks[1].cards, w)[1];
+        let at = tab.center();
+        l.begin(Drag::Pressed { stack: 1, key: "c".into(), at, tab: tab.min });
+        l.drag_to(Some(at + vec2(1.0, 60.0)), true, vec2(800.0, 600.0), &w);
+        assert_eq!(l.stacks.len(), 3, "taken off");
+        assert!(l.cancel_drag());
+        assert_eq!(l.stacks, was);
+        assert!(l.fitted && l.drag.is_none());
+        // Let go after, nothing more happens
+        assert!(!l.drag_to(Some(at), false, vec2(800.0, 600.0), &w));
+        assert_eq!(l.stacks, was);
+        l.begin(Drag::Tabs { stack: 1, key: "b".into() });
+        let tabs = tab_rects(l.stacks[1].rect(), &l.stacks[1].cards, w);
+        l.drag_to(Some(pos2(tabs[2].center().x + 1.0, tabs[2].center().y)), true, vec2(800.0, 600.0), &w);
+        assert!(l.cancel_drag());
+        assert_eq!(l.stacks[1].cards.join(","), "b,c,d");
+        assert!(!l.cancel_drag(), "nothing to cancel");
+    }
+
+    /// With the pointer: a stack moved by its bar goes back on Escape,
+    /// and stays put when let go.
+    #[test]
+    fn escape_cancels_moving_a_stack() {
+        use egui_kittest::kittest::Queryable;
+        let mut l = layout();
+        l.fitted = false;
+        l.stacks[0].set_rect(Rect::from_min_size(pos2(0.0, 0.0), vec2(300.0, 200.0)));
+        l.stacks[1].set_rect(Rect::from_min_size(pos2(320.0, 0.0), vec2(300.0, 200.0)));
+        let mut h = egui_kittest::Harness::builder().with_size(vec2(800.0, 600.0)).build_ui_state(
+            |ui, l: &mut Layout| {
+                let cards: Vec<Card> = KEYS.iter().map(|k| Card { key: k, title: k, loading: false }).collect();
+                board(ui, &Colors::default(), l, &cards, DEFAULT, |ui, k| {
+                    ui.label(format!("body of {k}"));
+                });
+            },
+            l,
+        );
+        h.run_steps(2);
+        let was = h.state().stacks.iter().find(|s| s.top == "a").unwrap().rect();
+        // On the bar, right of the tab
+        let tab = h.get_by_label("a").rect();
+        let at = pos2(tab.max.x + 40.0, tab.center().y);
+        h.hover_at(at);
+        h.step();
+        h.drag_at(at);
+        h.step();
+        h.hover_at(at + vec2(60.0, 200.0));
+        h.run_steps(2);
+        let moved = h.state().stacks.iter().find(|s| s.top == "a").unwrap().rect();
+        assert_ne!(moved, was, "it follows the pointer");
+        h.key_press(egui::Key::Escape);
+        h.run_steps(2);
+        assert!(h.state().drag.is_none());
+        h.drop_at(at + vec2(60.0, 200.0));
+        h.run_steps(2);
+        assert_eq!(h.state().stacks.iter().find(|s| s.top == "a").unwrap().rect(), was);
     }
 
     #[test]

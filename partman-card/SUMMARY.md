@@ -47,6 +47,13 @@ before the toolbox held it.
   bar would start dragging that stack.
 - **Snapping** (`snap_move`, `snap_resize`) is to the board's edges and to
   other stacks' edges, beside them (with `GAP`) or lined up.
+- **Escape** ends a drag and puts the stacks back (`cancel_drag`, public
+  for an app that cancels on something else): `begin` keeps the stacks
+  and `fitted` as they were when the drag began (after the press raised
+  the stack, which stays raised). The board takes Escape only while a
+  drag is under way, so it's the app's otherwise. The pointer is still
+  down after; with no drag recorded, nothing follows it until it's let
+  go.
 - **Tabs** are dragged sideways to reorder (`Drag::Tabs`), or up or down
   past `DECIDE` to take the card off (`Drag::Move` with `card`), which
   joins a stack when dropped on its bar (`bar_at`).
@@ -54,8 +61,10 @@ before the toolbox held it.
 ## Tests
 
 Layout: the default filling the board, arranging, snapping, a card taken
-off joining another stack, tabs reordering and coming off, a card added
-alone, and export and import. With the pointer, through egui_kittest: a
-press on a stack behind bringing it forward, and a combo box over another
-stack's bar pressed without dragging that stack, its list closed by a
-press elsewhere without raising anything.
+off joining another stack, tabs reordering and coming off, a cancelled
+drag putting back a card taken off and tabs reordered, a card added
+alone, and export and import. With the pointer, through egui_kittest:
+a stack moved by its bar going back on Escape and staying put when let
+go; a press on a stack behind bringing it forward; and a combo box over
+another stack's bar pressed without dragging that stack, its list closed
+by a press elsewhere without raising anything.

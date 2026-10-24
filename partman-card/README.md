@@ -11,7 +11,8 @@ pin planner's cards are drawn with.
   brings it to the front.
 - **Rearranging.** A tab dragged sideways reorders its stack's tabs.
   Dragged up or down, its card comes off as a stack of its own, which
-  joins another stack when dropped on its bar.
+  joins another stack when dropped on its bar. Escape during any drag puts
+  everything back as it was before the drag.
 - **Following the window.** Until the user arranges it, a board is laid
   out one stack under another, following the window, each as tall as its
   shown card's contents and the last taking the rest.
