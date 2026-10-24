@@ -109,6 +109,10 @@ placed if dropped.  Reordering drags can be canceled mid-drag with the
 ESC key, facilitating a return to the pre-drag state (order) similar
 to any other drag operation.
 
+When a card or other selectable item is clicked to drag it becomes the
+selected item and stays the selected card even if the drag is
+cancelled.
+
 ## Cards
 
 ### General
@@ -168,6 +172,9 @@ clicking on it.
 
 If a tab is grabbed and dragged sideways, rearrange the tabs.  As
 movement starts, enter tab rearrangement mode until released.
+
+When a card is clicked to drag it becomes selected and stays the
+selected card even if the drag is cancelled.
 
 If a tab is grabbed and moved up or down, unstack the card that tab
 belongs to and move the card, this is card rearrangement mode.  The
