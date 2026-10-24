@@ -1,44 +1,35 @@
-# egui-cards
+# partman-egui-toolbox
 
-A board of cards for [egui](https://github.com/emilk/egui): a page's
-information split into cards, each with a tab, kept in stacks the user
-moves, resizes and rearranges. It's the board Partman's part page and the
-pin planner's cards are drawn with.
+Components for [egui](https://github.com/emilk/egui) apps that look and
+behave like Partman: Partman itself, the pin planner, and apps like them.
+Each follows Partman's style and design guide (`STYLE.md` in Partman), so
+an app built from them is consistent with the others without
+reimplementing the guide.
 
-- **Stacks.** Cards sit in stacks, one card shown at a time, picked by its
-  tab. Stacks are moved by their bar and resized by their corner, and
-  snap to each other's edges and the board's. A press anywhere on a stack
-  brings it to the front.
-- **Rearranging.** A tab dragged sideways reorders its stack's tabs.
-  Dragged up or down, its card comes off as a stack of its own, which
-  joins another stack when dropped on its bar.
-- **Following the window.** Until the user arranges it, a board is laid
-  out one stack under another, following the window, each as tall as its
-  shown card's contents and the last taking the rest.
-- **Layouts kept.** A board knows nothing of what its cards show: the app
-  draws each card's contents by its key, and keeps the layout, which is
-  serializable, between runs. A layout can also be written to a file and
-  read back, to take it to another computer.
+## Components
 
-## Using it
+| Crate | What it is |
+| --- | --- |
+| [partman-card](partman-card/README.md) | A board of cards: tabbed cards in stacks the user moves, resizes and rearranges, the layout kept between runs. |
+| [partman-workflow](partman-workflow/README.md) | Workflows: a bar of the workflow's steps, an advance button on each step, and a work area that grows with its contents and scrolls only when it must. |
 
-Add it as a git dependency, pinned to a commit:
+## Using them
+
+Each is a crate of its own in this repository, added as a git dependency
+pinned to a commit:
 
 ```toml
-egui-cards = { git = "https://git.rockgarden.net/bson/egui-cards", rev = "…" }
+partman-card = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
+partman-workflow = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
 ```
 
-Each frame, give `egui_cards::board` the layout, the cards with their
-keys and titles, the layout to start from, the colours to draw in, and a
-function drawing a card's contents. The colours come from the app's
-theme, or from egui's own visuals.
-
-To work on it beside an app, a `[patch]` in the app's
+To work on them beside an app, a `[patch]` in the app's
 `.cargo/config.toml` uses a local checkout instead:
 
 ```toml
-[patch."https://git.rockgarden.net/bson/egui-cards"]
-egui-cards = { path = "../egui-cards" }
+[patch."https://git.rockgarden.net/bson/partman-egui-toolbox"]
+partman-card = { path = "../partman-egui-toolbox/partman-card" }
+partman-workflow = { path = "../partman-egui-toolbox/partman-workflow" }
 ```
 
 ## Building
@@ -51,5 +42,5 @@ cargo test
 
 Copyright (C) 2026 Jan Brittenson.
 
-egui-cards is free software under the GNU Affero General Public License,
+The toolbox is free software under the GNU Affero General Public License,
 version 3 or any later version ([LICENSE](LICENSE)).
