@@ -1,0 +1,14 @@
+[package]
+name = "partman-sidebar"
+description = "A sidebar for egui as the toolbox's style guide has it: opened and closed by a triangle on its edge, sliding, its width the user's"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+egui.workspace = true
+
+[dev-dependencies]
+egui_kittest.workspace = true

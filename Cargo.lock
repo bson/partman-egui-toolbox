@@ -421,6 +421,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "partman-sidebar"
+version = "0.1.0"
+dependencies = [
+ "egui",
+ "egui_kittest",
+]
+
+[[package]]
 name = "partman-workflow"
 version = "0.1.0"
 dependencies = [

@@ -16,6 +16,7 @@ starts as a change to it.
 | Crate | What it is |
 | --- | --- |
 | [partman-card](partman-card/README.md) | A board of cards: tabbed cards in stacks the user moves, resizes and rearranges, the layout kept between runs. |
+| [partman-sidebar](partman-sidebar/README.md) | A sidebar, such as an agent's: a triangle on the work area's edge slides it open and shut, and it keeps the width the user drags it to. |
 | [partman-workflow](partman-workflow/README.md) | Workflows: a bar of the workflow's steps, an advance button on each step, and a work area that grows with its contents and scrolls only when it must. |
 
 ## Using them
@@ -25,6 +26,7 @@ pinned to a commit:
 
 ```toml
 partman-card = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
+partman-sidebar = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
 partman-workflow = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
 ```
 
@@ -34,6 +36,7 @@ To work on them beside an app, a `[patch]` in the app's
 ```toml
 [patch."https://git.rockgarden.net/bson/partman-egui-toolbox"]
 partman-card = { path = "../partman-egui-toolbox/partman-card" }
+partman-sidebar = { path = "../partman-egui-toolbox/partman-sidebar" }
 partman-workflow = { path = "../partman-egui-toolbox/partman-workflow" }
 ```
 

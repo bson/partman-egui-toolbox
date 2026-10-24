@@ -1,5 +1,5 @@
 [workspace]
-members = ["partman-card", "partman-workflow"]
+members = ["partman-card", "partman-sidebar", "partman-workflow"]
 resolver = "3"
 
 [workspace.package]
