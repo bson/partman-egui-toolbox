@@ -1,11 +1,11 @@
 // Copyright (C) 2026 Jan Brittenson
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Workflows the way Partman's style guide has them: every step in a bar
-//! across the top, the one the user is on marked and those not yet
-//! possible greyed; an advance button, named for the next step, as each
-//! step's last control; and a work area that grows with its contents and
-//! scrolls only when it must. The app keeps the workflow's state and says
+//! Workflows the way the toolbox's style guide (STYLE.md) has them:
+//! every step in a bar across the top, the one the user is on marked and
+//! those not yet possible greyed; an advance button, named for the next
+//! step, as each step's last control; and a work area that grows with
+//! its contents and scrolls only when it must. The app keeps the workflow's state and says
 //! what each step needs; this draws it and moves between the steps.
 
 use egui::{Color32, CornerRadius, Id, Mesh, Rect, RichText, Sense, Shape, Stroke, Ui, Vec2, pos2, vec2};

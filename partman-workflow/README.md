@@ -1,7 +1,7 @@
 # partman-workflow
 
-Workflows for [egui](https://github.com/emilk/egui) the way Partman's
-style guide describes them, so every app's steps look and behave alike:
+Workflows for [egui](https://github.com/emilk/egui) the way the
+toolbox's style and design guide, [STYLE.md](../STYLE.md), describes them, so every app's steps look and behave alike:
 
 - **The step bar.** Every step of the workflow in a bar across the top,
   each a button pointing on to the next. The step the user is on is

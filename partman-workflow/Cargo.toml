@@ -1,6 +1,6 @@
 [package]
 name = "partman-workflow"
-description = "Workflows for egui as Partman's style guide has them: a bar of steps, an advance button, and a work area"
+description = "Workflows for egui as the toolbox's style guide has them: a bar of steps, an advance button, and a work area"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
