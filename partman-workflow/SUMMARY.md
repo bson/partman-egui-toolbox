@@ -1,7 +1,7 @@
 # partman-workflow: summary
 
 Everything is in `src/lib.rs`. It follows the Workflow section of
-Partman's `STYLE.md`; the pin planner is its first user.
+the toolbox's `STYLE.md`; the pin planner is its first user.
 
 ## API
 

@@ -7,6 +7,8 @@ egui version and the package metadata through `[workspace.package]` and
 - `partman-card/`: the board of cards. It was the egui-cards repository,
   moved here with its history.
 - `partman-workflow/`: workflows, first used by the pin planner.
+- `STYLE.md`: the style and design guide the components follow, moved
+  here from Partman so the apps share one copy.
 
 Apps pin the whole repository by commit; a component that changes takes
 its users' pins with it, so a fix is tested in the toolbox, pushed, then

@@ -2,9 +2,14 @@
 
 Components for [egui](https://github.com/emilk/egui) apps that look and
 behave like Partman: Partman itself, the pin planner, and apps like them.
-Each follows Partman's style and design guide (`STYLE.md` in Partman), so
-an app built from them is consistent with the others without
-reimplementing the guide.
+Each follows the style and design guide, [STYLE.md](STYLE.md), so an app
+built from them is consistent with the others without reimplementing the
+guide.
+
+**STYLE.md is the key guide for this project.** It says how the
+components look and behave, for Partman, the pin planner and the apps
+like them. A change to how a component looks or behaves follows it, or
+starts as a change to it.
 
 ## Components
 
