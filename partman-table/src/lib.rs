@@ -72,8 +72,10 @@ pub struct Table<'a> {
     cols: Vec<Col>,
     select: Select,
     max_height: f32,
+    scroll: bool,
     row_height: Option<f32>,
     reload: bool,
+    widths: Option<&'a mut Vec<f32>>,
 }
 
 /// What came of showing it.
@@ -83,12 +85,14 @@ pub struct Shown {
     pub selected: Vec<String>,
     /// The reload button was pressed
     pub reload: bool,
+    /// The user changed the widths given by `widths`, for the app to keep
+    pub resized: bool,
 }
 
 impl<'a> Table<'a> {
     /// A table under id, whose rows are known by keys, in the order shown.
     pub fn new(id: impl Hash + std::fmt::Debug, keys: &'a [String]) -> Table<'a> {
-        Table { id: Id::new(id), keys, cols: vec![], select: Select::None, max_height: 300.0, row_height: None, reload: false }
+        Table { id: Id::new(id), keys, cols: vec![], select: Select::None, max_height: 300.0, scroll: true, row_height: None, reload: false, widths: None }
     }
 
     pub fn select(mut self, select: Select) -> Table<'a> {
@@ -107,6 +111,22 @@ impl<'a> Table<'a> {
         self
     }
 
+    /// Whether the rows scroll once taller than `max_height`; without, the
+    /// table is as tall as its rows, for a view that scrolls itself.
+    pub fn scroll(mut self, scroll: bool) -> Table<'a> {
+        self.scroll = scroll;
+        self
+    }
+
+    /// The widths of the columns but the last, kept by the app (in its
+    /// settings, say) rather than in egui's memory: they start the
+    /// columns, and take the user's when a drag's over (`Shown::resized`).
+    /// Of another count, they're the columns' own.
+    pub fn widths(mut self, widths: &'a mut Vec<f32>) -> Table<'a> {
+        self.widths = Some(widths);
+        self
+    }
+
     /// Each row's height; a row of text and a little by default.
     pub fn row_height(mut self, height: f32) -> Table<'a> {
         self.row_height = Some(height);
@@ -122,7 +142,7 @@ impl<'a> Table<'a> {
     /// Draws it: `row` fills in a row's cells, by the row's place in keys,
     /// one `col` per column given; `actions` adds the buttons acting on the
     /// selection, given its keys, which are to be disabled when it's empty.
-    pub fn show(self, ui: &mut Ui, mut row: impl FnMut(&mut TableRow<'_, '_>, usize), actions: impl FnOnce(&mut Ui, &[String])) -> Shown {
+    pub fn show(mut self, ui: &mut Ui, mut row: impl FnMut(&mut TableRow<'_, '_>, usize), actions: impl FnOnce(&mut Ui, &[String])) -> Shown {
         let mut state = ui.data_mut(|d| d.get_persisted::<State>(self.id)).unwrap_or_default();
         // Rows gone are no longer selected; with none at all, they may be
         // loading still, so what's kept is let be
@@ -134,21 +154,42 @@ impl<'a> Table<'a> {
         let mut all = None;
 
         blank_row(ui);
+        let last = self.cols.len().saturating_sub(1);
+        let mut widths: Vec<f32> = self.cols[..last].iter().map(|c| c.width).collect();
+        if let Some(w) = self.widths.as_deref().filter(|w| w.len() == last) {
+            widths = w.clone();
+        }
+        // Too wide for the room, they're scaled down to fit and fixed, under
+        // an id of their own: a table wider than its card would widen the
+        // card, and push what's laid out from its right edge out of sight
+        let gaps = (self.cols.len() + usize::from(self.select != Select::None)) as f32 * ui.spacing().item_spacing.x;
+        let fixed = gaps + if self.select != Select::None { h } else { 0.0 };
+        let last_min = self.cols.last().map_or(0.0, |c| c.min);
+        let room = ui.available_width();
+        let natural: f32 = widths.iter().sum();
+        let scale = (natural + fixed + last_min > room && natural > 0.0).then(|| ((room - fixed - last_min) / natural).max(0.3));
+        let dragging = ui.input(|i| i.pointer.any_down());
         let mut b = TableBuilder::new(ui)
-            .id_salt(self.id)
+            .id_salt((self.id, scale.is_some()))
             .striped(true)
-            .resizable(true)
+            .resizable(scale.is_none())
             .auto_shrink([false, true])
+            .vscroll(self.scroll)
             .max_scroll_height(self.max_height)
             .cell_layout(Layout::left_to_right(egui::Align::Center))
             .sense(Sense::click());
         if self.select != Select::None {
             b = b.column(Column::exact(h));
         }
-        let last = self.cols.len().saturating_sub(1);
         for (i, c) in self.cols.iter().enumerate() {
-            b = b.column(if i == last { Column::remainder().at_least(c.min).clip(true) } else { Column::initial(c.width).at_least(c.min).clip(true) });
+            b = b.column(match (i == last, scale) {
+                (true, _) => Column::remainder().at_least(c.min).clip(true),
+                (false, Some(s)) => Column::exact((widths[i] * s).floor()).clip(true),
+                (false, None) => Column::initial(widths[i]).at_least(c.min).clip(true),
+            });
         }
+        let first = usize::from(self.select != Select::None);
+        let mut resized = false;
         let every = !self.keys.is_empty() && self.keys.iter().all(|k| state.selected.contains(k));
         b.header(h, |mut head| {
             if self.select != Select::None {
@@ -172,6 +213,23 @@ impl<'a> Table<'a> {
         .body(|mut body| {
             // Text left selectable would take the click meant for the row
             body.ui_mut().style_mut().interaction.selectable_labels = false;
+            // A selected row's text is drawn in the selection's stroke
+            // colour, which some themes have close to its fill: the strong
+            // text colour reads on it
+            let strong = body.ui_mut().visuals().strong_text_color();
+            body.ui_mut().visuals_mut().selection.stroke.color = strong;
+            // The user's widths, taken once a drag's over, not at each step
+            // of it; scaled to fit, they aren't the user's
+            if let Some(kept) = self.widths.as_deref_mut()
+                && scale.is_none()
+                && !dragging
+            {
+                let now = body.widths()[first..first + last].to_vec();
+                if now.len() == widths.len() && now.iter().zip(&widths).any(|(a, b)| (a - b).abs() > 0.5) {
+                    *kept = now;
+                    resized = true;
+                }
+            }
             for (i, key) in self.keys.iter().enumerate() {
                 let on = state.selected.contains(key);
                 body.row(h, |mut r| {
@@ -215,7 +273,7 @@ impl<'a> Table<'a> {
         });
         blank_row(ui);
         ui.data_mut(|d| d.insert_persisted(self.id, state));
-        Shown { selected, reload }
+        Shown { selected, reload, resized }
     }
 }
 
@@ -347,6 +405,48 @@ mod tests {
         assert_eq!(h.state().selected, ["d"]);
         click(&mut h, "Select row 1", Modifiers::NONE);
         assert_eq!(h.state().selected, ["a"]);
+    }
+
+    /// Too wide for the room, the columns are scaled to fit it; with room,
+    /// the widths an app keeps start them.
+    #[test]
+    fn fits_its_room_and_takes_kept_widths() {
+        let keys: Vec<String> = vec!["a".into()];
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(300.0, 200.0)).build_ui(|ui| {
+            Table::new("narrow", &keys).column(Col::new("Wide").width(400.0)).column(Col::new("More").width(300.0)).column(Col::new("Last")).show(
+                ui,
+                |r, _| {
+                    for _ in 0..3 {
+                        r.col(|ui| {
+                            ui.label("x");
+                        });
+                    }
+                },
+                |_, _| {},
+            );
+        });
+        h.run();
+        assert!(h.get_by_label("Last").rect().right() <= 300.0, "{:?}", h.get_by_label("Last").rect());
+        let mut kept = vec![50.0, 60.0];
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(600.0, 200.0)).build_ui_state(
+            |ui, kept: &mut Vec<f32>| {
+                Table::new("kept", &keys).column(Col::new("One").width(200.0)).column(Col::new("Two").width(200.0)).column(Col::new("Three")).widths(kept).show(
+                    ui,
+                    |r, _| {
+                        for _ in 0..3 {
+                            r.col(|ui| {
+                                ui.label("x");
+                            });
+                        }
+                    },
+                    |_, _| {},
+                );
+            },
+            std::mem::take(&mut kept),
+        );
+        h.run();
+        let (one, two) = (h.get_by_label("One").rect().left(), h.get_by_label("Two").rect().left());
+        assert!((two - one - 50.0).abs() < 12.0, "started at the kept width: {one} {two}");
     }
 
     /// Kept while the rows are loading again, and those gone let go.

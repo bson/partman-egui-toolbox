@@ -141,12 +141,13 @@ impl Icon {
 pub struct IconButton {
     icon: Icon,
     name: Option<String>,
+    text: Option<String>,
     enabled: bool,
 }
 
 impl IconButton {
     pub fn new(icon: Icon) -> IconButton {
-        IconButton { icon, name: None, enabled: true }
+        IconButton { icon, name: None, text: None, enabled: true }
     }
 
     /// The name screen readers say, where the icon's own isn't specific
@@ -156,23 +157,37 @@ impl IconButton {
         self
     }
 
+    /// Text after the icon, where the icon alone wouldn't say enough
+    /// (opening which app). It's the name too, unless one's given.
+    pub fn text(mut self, text: impl Into<String>) -> IconButton {
+        self.text = Some(text.into());
+        self
+    }
+
     pub fn enabled(mut self, enabled: bool) -> IconButton {
         self.enabled = enabled;
         self
     }
 
     pub fn show(self, ui: &mut Ui) -> Response {
-        let side = row_height(ui) + 2.0 * ui.spacing().button_padding.y;
-        let (rect, response) = ui.allocate_exact_size(Vec2::splat(side), if self.enabled { Sense::click() } else { Sense::hover() });
-        let name = self.name.unwrap_or_else(|| self.icon.name().to_string());
+        let pad = ui.spacing().button_padding;
+        let side = row_height(ui) + 2.0 * pad.y;
+        let galley = self.text.as_ref().map(|t| WidgetText::from(t.as_str()).into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, TextStyle::Button));
+        let width = side + galley.as_ref().map_or(0.0, |g| g.size().x + pad.x);
+        let (rect, response) = ui.allocate_exact_size(vec2(width, side), if self.enabled { Sense::click() } else { Sense::hover() });
+        let name = self.name.or(self.text.clone()).unwrap_or_else(|| self.icon.name().to_string());
         let enabled = self.enabled;
         response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, &name));
         if ui.is_rect_visible(rect) {
             let v = if enabled { ui.style().interact(&response) } else { &ui.visuals().widgets.noninteractive };
             ui.painter().rect(rect, v.corner_radius, v.weak_bg_fill, v.bg_stroke, egui::StrokeKind::Inside);
             let color: Color32 = if enabled { v.fg_stroke.color } else { ui.visuals().weak_text_color() };
-            let icon = Rect::from_center_size(rect.center(), Vec2::splat(row_height(ui)));
+            let icon = Rect::from_center_size(rect.left_center() + vec2(side / 2.0, 0.0), Vec2::splat(row_height(ui)));
             self.icon.paint(ui.painter(), icon, Stroke::new(1.5, color));
+            if let Some(g) = galley {
+                let at = egui::pos2(rect.left() + side, rect.center().y - g.size().y / 2.0);
+                ui.painter().galley(at, g, color);
+            }
         }
         response
     }
@@ -225,6 +240,9 @@ mod tests {
                         }
                     }
                     IconButton::new(Icon::Delete).name("Delete the selected rows").enabled(false).show(ui);
+                    if IconButton::new(Icon::Open).text("Partman").show(ui).clicked() {
+                        *clicks += 10;
+                    }
                 });
             },
             clicks,
@@ -238,6 +256,9 @@ mod tests {
         h.get_by_label("Delete the selected rows").click();
         h.run();
         assert_eq!(*h.state(), 6, "disabled");
+        h.get_by_label("Partman").click();
+        h.run();
+        assert_eq!(*h.state(), 16, "named by its text");
         clicks = *h.state();
         let _ = clicks;
     }

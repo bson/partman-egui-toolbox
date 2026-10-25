@@ -35,7 +35,9 @@ for a row from one frame and run to the next (a database id, a file
 name), add its `Col`umns, how rows are selected and a reload button if
 wanted, and `show` it with a closure filling a row's cells and one adding
 the action buttons, given the selected keys. It says what's selected and
-whether reload was pressed. The app needs eframe's persistence for what's
+whether reload was pressed. Columns too wide for their card are scaled
+to fit it. The column widths can be the app's own, kept in its settings,
+which it's told of when the user changes them. The app needs eframe's persistence for what's
 kept to outlast a run.
 
 ## Building
