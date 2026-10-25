@@ -48,5 +48,9 @@ and uses partman-widgets for blank rows and the reload button.
   click is. **One:** any click selects that row alone.
 - **Select all** is on when every row is selected, and pressing it then
   selects none.
+- **Selected rows** are a tint of the theme's selection fill (0.45 of
+  it), their plain text the strong text colour: the full fill and the
+  selection's text colour left links and coloured text unreadable in
+  some themes.
 - **Names:** the header checkbox is "Select all", each row's control
   "Select row N", for screen readers and tests.

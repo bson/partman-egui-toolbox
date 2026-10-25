@@ -60,6 +60,8 @@ const SNAP: f32 = 10.0;
 /// The resize grip in a stack's bottom right corner.
 const GRIP: f32 = 14.0;
 const MIN: Vec2 = vec2(180.0, 100.0);
+/// A new card's size.
+const NEW: Vec2 = vec2(420.0, 260.0);
 /// Beside a tab's title.
 const TAB_PAD: f32 = 12.0;
 const MIN_TAB_PAD: f32 = 4.0;
@@ -95,6 +97,13 @@ pub struct Layout {
     /// stack, other than the last, is sized to
     #[serde(skip)]
     heights: HashMap<String, f32>,
+    /// Where the board's content was on the screen last frame, and the
+    /// part of the board seen, scrolled to: a new card's room is looked
+    /// for there, and drops on the board are told apart by it
+    #[serde(skip)]
+    origin: Vec2,
+    #[serde(skip)]
+    seen: Option<Rect>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -226,17 +235,67 @@ impl Layout {
         }
     }
 
-    /// A new card in a stack of its own: under the others, or while the
-    /// layout follows the window, just above the last, which keeps taking
-    /// what's left.
+    /// A new card in a stack of its own: where the part of the board seen
+    /// has room for all of it, the first such place from the top left; with
+    /// none, under the others. While the layout follows the window, just
+    /// above the last stack, which keeps taking what's left.
     pub fn add_alone(&mut self, key: &str) {
         if self.fitted {
             let at = self.stacks.len().saturating_sub(1);
             self.stacks.insert(at, Stack::of(vec![key.to_string()], Rect::ZERO));
             return;
         }
-        let bottom = self.stacks.iter().map(|s| s.rect().max.y).fold(0.0, f32::max);
-        self.stacks.push(Stack::of(vec![key.to_string()], Rect::from_min_size(pos2(0.0, bottom + GAP), vec2(420.0, 260.0))));
+        let r = self.room(NEW).unwrap_or_else(|| {
+            let bottom = self.stacks.iter().map(|s| s.rect().max.y).fold(0.0, f32::max);
+            Rect::from_min_size(pos2(0.0, bottom + GAP), NEW)
+        });
+        self.stacks.push(Stack::of(vec![key.to_string()], r));
+    }
+
+    /// A place of size within the part of the board seen that no stack
+    /// is on or within GAP of: the topmost, then leftmost, among the seen
+    /// part's corner and the places beside and under the stacks.
+    fn room(&self, size: Vec2) -> Option<Rect> {
+        let seen = self.seen?;
+        if seen.width() < size.x || seen.height() < size.y {
+            return None;
+        }
+        let mut xs: Vec<f32> = std::iter::once(seen.min.x).chain(self.stacks.iter().map(|s| s.rect().max.x + GAP)).collect();
+        let mut ys: Vec<f32> = std::iter::once(seen.min.y).chain(self.stacks.iter().map(|s| s.rect().max.y + GAP)).collect();
+        xs.sort_by(f32::total_cmp);
+        ys.sort_by(f32::total_cmp);
+        let clear = |r: Rect| seen.contains_rect(r) && !self.stacks.iter().any(|s| s.rect().expand(GAP - 0.5).intersects(r));
+        ys.iter().flat_map(|&y| xs.iter().map(move |&x| Rect::from_min_size(pos2(x, y), size))).find(|r| clear(*r))
+    }
+
+    /// Where on the board a point on the screen is, if it's on the part
+    /// seen and on no stack: somewhere a dragged thing can make a card.
+    pub fn blank_at(&self, screen: Pos2) -> Option<Pos2> {
+        if self.fitted {
+            return None;
+        }
+        let p = screen - self.origin;
+        (self.seen?.contains(p) && !self.stacks.iter().any(|s| s.rect().contains(p))).then_some(p)
+    }
+
+    /// Where a new card put at a point on the board (from `blank_at`) goes:
+    /// its bar's left under the point, kept within the part seen.
+    pub fn card_rect_at(&self, at: Pos2) -> Rect {
+        let seen = self.seen.unwrap_or(Rect::from_min_size(Pos2::ZERO, NEW));
+        let x = (at.x - GAP).clamp(seen.min.x, (seen.max.x - NEW.x).max(seen.min.x));
+        let y = (at.y - BAR / 2.0).clamp(seen.min.y, (seen.max.y - NEW.y).max(seen.min.y));
+        Rect::from_min_size(pos2(x, y), NEW)
+    }
+
+    /// The same as screen, for drawing where it'd go.
+    pub fn card_screen_rect_at(&self, at: Pos2) -> Rect {
+        self.card_rect_at(at).translate(self.origin)
+    }
+
+    /// A new card in a stack of its own put at a point on the board.
+    pub fn add_at(&mut self, key: &str, at: Pos2) {
+        let r = self.card_rect_at(at);
+        self.stacks.push(Stack::of(vec![key.to_string()], r));
     }
 
     /// Whether the card is on top of its stack.
@@ -424,6 +483,11 @@ pub fn board(ui: &mut Ui, t: &Colors, layout: &mut Layout, cards: &[Card], defau
         .scroll_source(egui::scroll_area::ScrollSource::SCROLL_BAR | egui::scroll_area::ScrollSource::MOUSE_WHEEL);
     scroll.show(ui, |ui| {
         let origin = ui.cursor().min.to_vec2();
+        layout.origin = origin;
+        // Nothing's above or left of the board's corner, though its clip
+        // reaches a little past it
+        let seen = ui.clip_rect().translate(-origin);
+        layout.seen = Some(Rect::from_min_max(seen.min.max(Pos2::ZERO), seen.max));
         let (pointer, down, press) = ui.input(|i| (i.pointer.latest_pos(), i.pointer.primary_down(), i.pointer.press_origin()));
         let on_board = |p: Pos2| p - origin;
         // Taken only while dragging, so Escape is the app's otherwise. The
@@ -604,6 +668,47 @@ mod tests {
         l.arrange(&KEYS, DEFAULT);
         l.fit(vec2(800.0, 600.0));
         l
+    }
+
+    /// A layout of stacks at rects, seen as the board's top left of size.
+    fn laid(rects: &[[f32; 4]], seen: Vec2) -> Layout {
+        let mut l = Layout::default();
+        for (n, r) in rects.iter().enumerate() {
+            l.stacks.push(Stack { rect: *r, cards: vec![format!("c{n}")], top: format!("c{n}") });
+        }
+        l.seen = Some(Rect::from_min_size(Pos2::ZERO, seen));
+        l
+    }
+
+    /// A new card goes where the board seen has room for all of it: beside
+    /// a stack, else under one, else, with none, under them all.
+    #[test]
+    fn new_cards_find_room() {
+        let mut l = laid(&[[0.0, 0.0, 600.0, 400.0]], vec2(1200.0, 800.0));
+        l.add_alone("a");
+        assert_eq!(l.stacks[1].rect, [616.0, 0.0, NEW.x, NEW.y], "beside it");
+        l.add_alone("b");
+        assert_eq!(l.stacks[2].rect[0..2], [616.0, 276.0], "under the one beside");
+        l.add_alone("c");
+        assert_eq!(l.stacks[3].rect[0..2], [0.0, 416.0], "under the first");
+        let mut full = laid(&[[0.0, 0.0, 1200.0, 800.0]], vec2(1200.0, 800.0));
+        full.add_alone("d");
+        assert_eq!(full.stacks[1].rect[0..2], [0.0, 816.0], "no room: under them all");
+    }
+
+    /// A point on the board seen and on no stack is blank, and a card put
+    /// there stays within what's seen.
+    #[test]
+    fn drops_on_blank_board() {
+        let l = laid(&[[0.0, 0.0, 600.0, 400.0]], vec2(1200.0, 800.0));
+        assert_eq!(l.blank_at(pos2(700.0, 100.0)), Some(pos2(700.0, 100.0)));
+        assert_eq!(l.blank_at(pos2(100.0, 100.0)), None, "on a stack");
+        assert_eq!(l.blank_at(pos2(1300.0, 100.0)), None, "off the board seen");
+        let r = l.card_rect_at(pos2(1190.0, 790.0));
+        assert!(Rect::from_min_size(Pos2::ZERO, vec2(1200.0, 800.0)).contains_rect(r), "{r:?}");
+        let mut fitted = l.clone();
+        fitted.fitted = true;
+        assert_eq!(fitted.blank_at(pos2(700.0, 100.0)), None, "a fitted board has no blank");
     }
 
     #[test]

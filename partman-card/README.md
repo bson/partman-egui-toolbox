@@ -13,6 +13,9 @@ pin planner's cards are drawn with.
   Dragged up or down, its card comes off as a stack of its own, which
   joins another stack when dropped on its bar. Escape during any drag puts
   everything back as it was before the drag.
+- **Room for new cards.** A new card goes where the board, as scrolled,
+  has room for all of it. The app can also make a card where something
+  is dropped on the board between the stacks.
 - **Following the window.** Until the user arranges it, a board is laid
   out one stack under another, following the window, each as tall as its
   shown card's contents and the last taking the rest.

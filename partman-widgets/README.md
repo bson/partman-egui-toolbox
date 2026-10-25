@@ -13,7 +13,8 @@ following it:
 - **Icon buttons** that always mean the same thing: a wastebasket to
   delete, a box with an arrow down into it to download, a box with an
   arrow up and out of it to open elsewhere, a circular arrow to reload,
-  and double carets to move up and down. They're drawn, not taken from a
+  double carets to move up and down, and a check mark to mark something
+  checked or verified. They're drawn, not taken from a
   font, so they look the same in every app and theme.
 
 ## Using it

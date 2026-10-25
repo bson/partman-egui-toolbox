@@ -15,8 +15,19 @@ before the toolbox held it.
   - `show(key)` puts a card on top of its stack; `on_top(key)` says
     whether it is.
   - `add_alone(key)` adds a card in a stack of its own: just above the
-    last while fitted, as the last takes what's left, else under all the
-    others.
+    last while fitted, as the last takes what's left, else in the first
+    place in the part of the board seen with room for all of it (420 by
+    260), the top left, beside and under the stacks tried from the top,
+    clear of every stack by `GAP`; with none, under all the others.
+  - `blank_at(screen)` is the board point under a screen point that's in
+    the part seen and on no stack, for a drop there to make a card;
+    never while fitted, when the stacks fill the board.
+    `card_rect_at(point)` (and `card_screen_rect_at`, to draw it) is
+    where a card put there goes, its bar's left under it, kept within
+    what's seen; `add_at(key, point)` adds one there.
+  - What's seen and where the board's content is on the screen are taken
+    each frame `board` draws it (`seen`, `origin`, not saved), cut to the
+    board's top left corner, which the clip reaches a little past.
 - `board(ui, colors, layout, cards, default, content)` draws the board in
   what's left of `ui` and handles the pointer; `content(ui, key)` draws a
   card's contents. It returns whether the layout changed, to be saved.

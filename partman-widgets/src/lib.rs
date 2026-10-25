@@ -68,6 +68,8 @@ pub enum Icon {
     MoveUp,
     /// A double caret down
     MoveDown,
+    /// A check mark: marking something checked, verified or done
+    Check,
 }
 
 impl Icon {
@@ -81,6 +83,7 @@ impl Icon {
             Icon::Reload => "Reload",
             Icon::MoveUp => "Move up",
             Icon::MoveDown => "Move down",
+            Icon::Check => "Check",
         }
     }
 
@@ -130,6 +133,9 @@ impl Icon {
                 shapes.push(line(&[(0.24, 0.22), (0.50, 0.48), (0.76, 0.22)]));
                 shapes.push(line(&[(0.24, 0.50), (0.50, 0.76), (0.76, 0.50)]));
             }
+            Icon::Check => {
+                shapes.push(line(&[(0.20, 0.54), (0.42, 0.76), (0.82, 0.26)]));
+            }
         }
         painter.extend(shapes);
     }
@@ -142,12 +148,13 @@ pub struct IconButton {
     icon: Icon,
     name: Option<String>,
     text: Option<String>,
+    color: Option<Color32>,
     enabled: bool,
 }
 
 impl IconButton {
     pub fn new(icon: Icon) -> IconButton {
-        IconButton { icon, name: None, text: None, enabled: true }
+        IconButton { icon, name: None, text: None, color: None, enabled: true }
     }
 
     /// The name screen readers say, where the icon's own isn't specific
@@ -161,6 +168,13 @@ impl IconButton {
     /// (opening which app). It's the name too, unless one's given.
     pub fn text(mut self, text: impl Into<String>) -> IconButton {
         self.text = Some(text.into());
+        self
+    }
+
+    /// The colour it's drawn in while enabled, where the colour says
+    /// something (a check mark green); else the button's text colour.
+    pub fn color(mut self, color: Color32) -> IconButton {
+        self.color = Some(color);
         self
     }
 
@@ -181,7 +195,7 @@ impl IconButton {
         if ui.is_rect_visible(rect) {
             let v = if enabled { ui.style().interact(&response) } else { &ui.visuals().widgets.noninteractive };
             ui.painter().rect(rect, v.corner_radius, v.weak_bg_fill, v.bg_stroke, egui::StrokeKind::Inside);
-            let color: Color32 = if enabled { v.fg_stroke.color } else { ui.visuals().weak_text_color() };
+            let color: Color32 = if enabled { self.color.unwrap_or(v.fg_stroke.color) } else { ui.visuals().weak_text_color() };
             let icon = Rect::from_center_size(rect.left_center() + vec2(side / 2.0, 0.0), Vec2::splat(row_height(ui)));
             self.icon.paint(ui.painter(), icon, Stroke::new(1.5, color));
             if let Some(g) = galley {
@@ -234,7 +248,7 @@ mod tests {
         let mut h = egui_kittest::Harness::new_ui_state(
             |ui, clicks: &mut i32| {
                 ui.horizontal(|ui| {
-                    for i in [Icon::Delete, Icon::Download, Icon::Open, Icon::Reload, Icon::MoveUp, Icon::MoveDown] {
+                    for i in [Icon::Delete, Icon::Download, Icon::Open, Icon::Reload, Icon::MoveUp, Icon::MoveDown, Icon::Check] {
                         if icon_button(ui, i).clicked() {
                             *clicks += 1;
                         }
@@ -248,17 +262,17 @@ mod tests {
             clicks,
         );
         h.run();
-        for name in ["Delete", "Download", "Open", "Reload", "Move up", "Move down"] {
+        for name in ["Delete", "Download", "Open", "Reload", "Move up", "Move down", "Check"] {
             h.get_by_label(name).click();
             h.run();
         }
-        assert_eq!(*h.state(), 6);
+        assert_eq!(*h.state(), 7);
         h.get_by_label("Delete the selected rows").click();
         h.run();
-        assert_eq!(*h.state(), 6, "disabled");
+        assert_eq!(*h.state(), 7, "disabled");
         h.get_by_label("Partman").click();
         h.run();
-        assert_eq!(*h.state(), 16, "named by its text");
+        assert_eq!(*h.state(), 17, "named by its text");
         clicks = *h.state();
         let _ = clicks;
     }

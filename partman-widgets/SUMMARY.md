@@ -13,9 +13,11 @@ sections of the toolbox's `STYLE.md`.
   own, with `icon_spacing` set to an em for them.
 - `explanation(ui, text)`: a blank row, then the text.
 - `Icon`: `Delete`, `Download`, `Open`, `Reload`, `MoveUp`, `MoveDown`,
+  `Check`,
   with `name()` and `paint(painter, rect, stroke)`.
 - `IconButton::new(icon)`, then `name(..)`, `text(..)` (after the icon,
-  and its name unless one's given) and `enabled(..)`, then
+  and its name unless one's given), `color(..)` (while enabled, where the
+  colour says something) and `enabled(..)`, then
   `show(ui)`; `icon_button(ui, icon)` for the plain one.
 
 ## Behaviour worth knowing

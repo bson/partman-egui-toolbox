@@ -218,6 +218,10 @@ impl<'a> Table<'a> {
             // text colour reads on it
             let strong = body.ui_mut().visuals().strong_text_color();
             body.ui_mut().visuals_mut().selection.stroke.color = strong;
+            // And a tint of the selection's fill rather than all of it, so
+            // text with colours of its own (links, a status) reads on it too
+            let fill = body.ui_mut().visuals().selection.bg_fill;
+            body.ui_mut().visuals_mut().selection.bg_fill = fill.gamma_multiply(0.45);
             // The user's widths, taken once a drag's over, not at each step
             // of it; scaled to fit, they aren't the user's
             if let Some(kept) = self.widths.as_deref_mut()
