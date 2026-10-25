@@ -1,0 +1,14 @@
+[package]
+name = "partman-widgets"
+description = "The small parts of the toolbox's style guide for egui: blank rows, checkboxes with their label an em away, and icon buttons that always mean the same thing"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+egui.workspace = true
+
+[dev-dependencies]
+egui_kittest.workspace = true

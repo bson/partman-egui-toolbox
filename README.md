@@ -17,6 +17,8 @@ starts as a change to it.
 | --- | --- |
 | [partman-card](partman-card/README.md) | A board of cards: tabbed cards in stacks the user moves, resizes and rearranges, the layout kept between runs. |
 | [partman-sidebar](partman-sidebar/README.md) | A sidebar, such as an agent's: a triangle on the work area's edge slides it open and shut, and it keeps the width the user drags it to. |
+| [partman-table](partman-table/README.md) | Tables: headed, adjustable columns, rows selected by checkbox, radio button or click, actions on the selection below, and the selection and scroll kept between runs. |
+| [partman-widgets](partman-widgets/README.md) | The small parts: blank rows, checkboxes and radio buttons with their label an em away, explanations before buttons, and icon buttons that always mean the same thing. |
 | [partman-workflow](partman-workflow/README.md) | Workflows: a bar of the workflow's steps, an advance button on each step, and a work area that grows with its contents and scrolls only when it must. |
 
 ## Using them
@@ -27,6 +29,8 @@ pinned to a commit:
 ```toml
 partman-card = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
 partman-sidebar = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
+partman-table = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
+partman-widgets = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
 partman-workflow = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
 ```
 
@@ -37,6 +41,8 @@ To work on them beside an app, a `[patch]` in the app's
 [patch."https://git.rockgarden.net/bson/partman-egui-toolbox"]
 partman-card = { path = "../partman-egui-toolbox/partman-card" }
 partman-sidebar = { path = "../partman-egui-toolbox/partman-sidebar" }
+partman-table = { path = "../partman-egui-toolbox/partman-table" }
+partman-widgets = { path = "../partman-egui-toolbox/partman-widgets" }
 partman-workflow = { path = "../partman-egui-toolbox/partman-workflow" }
 ```
 
