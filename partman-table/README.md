@@ -13,7 +13,8 @@ style and design guide, [STYLE.md](../STYLE.md), has them:
   one last clicked. A link or button in a row still does its own thing.
 - **Actions below,** in a row of buttons acting on the selection,
   disabled while nothing's selected, with a reload button where it
-  makes sense. No action is on a row.
+  makes sense, and buttons giving an agent a task on a line of their own
+  under them. No action is on a row.
 - **Only the rows scroll;** the header and the actions stay put.
 - **Kept.** The selection, the row last clicked and the scroll position
   are kept under the table's id, through the app's steps and from one

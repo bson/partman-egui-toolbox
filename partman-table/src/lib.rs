@@ -142,7 +142,24 @@ impl<'a> Table<'a> {
     /// Draws it: `row` fills in a row's cells, by the row's place in keys,
     /// one `col` per column given; `actions` adds the buttons acting on the
     /// selection, given its keys, which are to be disabled when it's empty.
-    pub fn show(mut self, ui: &mut Ui, mut row: impl FnMut(&mut TableRow<'_, '_>, usize), actions: impl FnOnce(&mut Ui, &[String])) -> Shown {
+    pub fn show(self, ui: &mut Ui, row: impl FnMut(&mut TableRow<'_, '_>, usize), actions: impl FnOnce(&mut Ui, &[String])) -> Shown {
+        self.draw(ui, row, actions, None)
+    }
+
+    /// `show`, with buttons giving an agent a task on the selection
+    /// (partman-widgets' `AgentButton`) on a line of their own under the
+    /// others, as the style guide has them, their size being another.
+    pub fn show_with_agents(
+        self,
+        ui: &mut Ui,
+        row: impl FnMut(&mut TableRow<'_, '_>, usize),
+        actions: impl FnOnce(&mut Ui, &[String]),
+        mut agents: impl FnMut(&mut Ui, &[String]),
+    ) -> Shown {
+        self.draw(ui, row, actions, Some(&mut agents))
+    }
+
+    fn draw(mut self, ui: &mut Ui, mut row: impl FnMut(&mut TableRow<'_, '_>, usize), actions: impl FnOnce(&mut Ui, &[String]), agents: Option<&mut dyn FnMut(&mut Ui, &[String])>) -> Shown {
         let mut state = ui.data_mut(|d| d.get_persisted::<State>(self.id)).unwrap_or_default();
         // Rows gone are no longer selected; with none at all, they may be
         // loading still, so what's kept is let be
@@ -275,6 +292,9 @@ impl<'a> Table<'a> {
                 reload = true;
             }
         });
+        if let Some(agents) = agents {
+            ui.horizontal_wrapped(|ui| agents(ui, &selected));
+        }
         blank_row(ui);
         ui.data_mut(|d| d.insert_persisted(self.id, state));
         Shown { selected, reload, resized }
@@ -397,6 +417,31 @@ mod tests {
         assert_eq!(h.state().deleted, ["a", "c"]);
         click(&mut h, "Reload", Modifiers::NONE);
         assert_eq!(h.state().reloads, 1);
+    }
+
+    /// Agent buttons on a line of their own, under the others.
+    #[test]
+    fn agent_actions_on_their_own_line() {
+        let keys: Vec<String> = vec!["a".into()];
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(600.0, 300.0)).build_ui(|ui| {
+            Table::new("agents", &keys).select(Select::Many).column(Col::new("Name")).reload().show_with_agents(
+                ui,
+                |r, _| {
+                    r.col(|ui| {
+                        ui.label("x");
+                    });
+                },
+                |ui, _| {
+                    IconButton::new(Icon::Delete).show(ui);
+                },
+                |ui, _| {
+                    partman_widgets::AgentButton::new("Review").show(ui);
+                },
+            );
+        });
+        h.run();
+        let (del, reload, agent) = (h.get_by_label("Delete").rect(), h.get_by_label("Reload").rect(), h.get_by_label("Agent: Review").rect());
+        assert!((del.top() - reload.top()).abs() < 1.0 && agent.top() > del.bottom(), "{del:?} {reload:?} {agent:?}");
     }
 
     #[test]

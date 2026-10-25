@@ -12,6 +12,9 @@ and uses partman-widgets for blank rows and the reload button.
   `scroll(false)` (as tall as the rows, for a view that scrolls itself),
   `row_height(h)`, `reload()`, and `widths(&mut Vec<f32>)`, the columns'
   but the last, kept by the app.
+- `show_with_agents(ui, row, actions, agents)`: the same, with buttons
+  giving an agent a task on the selection on a line of their own under
+  the actions and the reload button, as the style guide has them.
 - `show(ui, |row, i| { row.col(..); .. }, |ui, selected| { .. })`:
   the first fills row `i`'s cells, one `col` per column given (the
   selection column is the table's); the second adds the actions,
