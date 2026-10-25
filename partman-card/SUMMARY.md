@@ -19,6 +19,11 @@ before the toolbox held it.
     place in the part of the board seen with room for all of it (420 by
     260), the top left, beside and under the stacks tried from the top,
     clear of every stack by `GAP`; with none, under all the others.
+  - `take_closed()` gives the card whose close mark was pressed, once. A
+    `Card` with `close` set has one at its bar's right end while it's
+    alone in its stack (a card sharing a stack is taken off it to be
+    closed); the board only says so, and the app removes the card, or
+    asks first. A spinner moves left of it.
   - `blank_at(screen)` is the board point under a screen point that's in
     the part seen and on no stack, for a drop there to make a card;
     never while fitted, when the stacks fill the board.

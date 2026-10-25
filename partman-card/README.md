@@ -13,6 +13,9 @@ pin planner's cards are drawn with.
   Dragged up or down, its card comes off as a stack of its own, which
   joins another stack when dropped on its bar. Escape during any drag puts
   everything back as it was before the drag.
+- **Closing.** A card the app lets be closed has a close mark on its
+  bar while it's alone in its stack; the app is told, and removes it or
+  asks first.
 - **Room for new cards.** A new card goes where the board, as scrolled,
   has room for all of it. The app can also make a card where something
   is dropped on the board between the stacks.

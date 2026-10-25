@@ -77,6 +77,10 @@ pub struct Card<'a> {
     pub title: &'a str,
     /// Shows a spinner on its stack while it's the one on top
     pub loading: bool,
+    /// Can be closed: alone in its stack, it has a close mark at its bar's
+    /// right end, and pressing it is said by `Layout::take_closed`, for the
+    /// app to remove it (or not, having asked)
+    pub close: bool,
 }
 
 /// Where a board's stacks are and what they hold.
@@ -104,6 +108,9 @@ pub struct Layout {
     origin: Vec2,
     #[serde(skip)]
     seen: Option<Rect>,
+    /// The card whose close mark was pressed, for the app to take
+    #[serde(skip)]
+    closed: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -226,6 +233,13 @@ impl Layout {
             s.set_rect(Rect::from_min_size(pos2(0.0, y), vec2(area.x, h)));
             y += h + GAP;
         }
+    }
+
+    /// The card whose close mark was pressed since the last asked, if one
+    /// was: the app removes it, the layout letting it go once it's no
+    /// longer among the cards given.
+    pub fn take_closed(&mut self) -> Option<String> {
+        self.closed.take()
     }
 
     /// Puts the card on top of its stack.
@@ -552,8 +566,30 @@ pub fn board(ui: &mut Ui, t: &Colors, layout: &mut Layout, cards: &[Card], defau
                     start = Some((i, Drag::Pressed { stack: i, key: k.clone(), at: on_board(at), tab: on_board(tr.min) }));
                 }
             }
+            // A card alone in its stack, that can be closed: a close mark
+            // at the bar's right end, over the bar, so a press on it isn't
+            // a drag of the stack
+            let close = s.cards.len() == 1 && cards.iter().any(|c| c.key == s.top && c.close);
+            if close {
+                let cr = Rect::from_center_size(pos2(bar.max.x - BAR / 2.0, bar.center().y), vec2(BAR - 10.0, BAR - 10.0));
+                let title = cards.iter().find(|c| c.key == s.top).map_or("", |c| c.title);
+                let c = ui.interact(cr, id.with("close"), Sense::click()).on_hover_text("Close this card");
+                c.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("Close {title}")));
+                if c.hovered() {
+                    painter.rect_filled(cr, 4, t.hover);
+                }
+                let (a, b) = (cr.shrink(5.0).min, cr.shrink(5.0).max);
+                let stroke = Stroke::new(1.5, if c.hovered() { t.text } else { t.text_dim });
+                painter.line_segment([a, b], stroke);
+                painter.line_segment([pos2(a.x, b.y), pos2(b.x, a.y)], stroke);
+                if c.clicked() {
+                    layout.closed = Some(s.top.clone());
+                }
+            }
             if cards.iter().any(|c| c.key == s.top && c.loading) {
-                let sr = Rect::from_center_size(pos2(bar.max.x - BAR / 2.0, bar.center().y), vec2(14.0, 14.0));
+                // Left of the close mark, if there's one
+                let x = bar.max.x - BAR / 2.0 - if close { BAR } else { 0.0 };
+                let sr = Rect::from_center_size(pos2(x, bar.center().y), vec2(14.0, 14.0));
                 egui::Spinner::new().size(14.0).paint_at(ui, sr);
             }
             let body = Rect::from_min_max(pos2(r.min.x, bar.max.y), r.max).shrink(PAD);
@@ -761,6 +797,34 @@ mod tests {
         assert_eq!(l.stacks[1].rect().size(), size);
     }
 
+    /// A closable card alone in its stack has a close mark, which says it
+    /// was pressed; one sharing its stack has none.
+    #[test]
+    fn a_solo_card_can_be_closed() {
+        use egui_kittest::kittest::Queryable;
+        let mut h = egui_kittest::Harness::builder().with_size(vec2(800.0, 600.0)).build_ui_state(
+            |ui, l: &mut Layout| {
+                let cards: Vec<Card> = KEYS.iter().map(|k| Card { key: k, title: k, loading: false, close: true }).collect();
+                board(ui, &Colors::default(), l, &cards, DEFAULT, |ui, k| {
+                    ui.label(format!("body of {k}"));
+                });
+            },
+            layout(),
+        );
+        h.run_steps(2);
+        let solo: Vec<&str> = h.state().stacks.iter().filter(|s| s.cards.len() == 1).map(|s| s.top.as_str()).collect();
+        let shared: Vec<String> = h.state().stacks.iter().filter(|s| s.cards.len() > 1).flat_map(|s| s.cards.clone()).collect();
+        assert!(!solo.is_empty() && !shared.is_empty(), "the default has both");
+        for k in &shared {
+            assert!(h.query_by_label(&format!("Close {k}")).is_none(), "{k} shares its stack");
+        }
+        let k = solo[0].to_string();
+        h.get_by_label(&format!("Close {k}")).click();
+        h.run_steps(2);
+        assert_eq!(h.state_mut().take_closed(), Some(k));
+        assert_eq!(h.state_mut().take_closed(), None, "said once");
+    }
+
     #[test]
     fn a_press_anywhere_on_a_stack_brings_it_forward() {
         use egui_kittest::kittest::Queryable;
@@ -770,7 +834,7 @@ mod tests {
         l.stacks[1].set_rect(Rect::from_min_size(pos2(200.0, 200.0), vec2(300.0, 300.0)));
         let mut h = egui_kittest::Harness::builder().with_size(vec2(800.0, 600.0)).build_ui_state(
             |ui, l: &mut Layout| {
-                let cards: Vec<Card> = KEYS.iter().map(|k| Card { key: k, title: k, loading: false }).collect();
+                let cards: Vec<Card> = KEYS.iter().map(|k| Card { key: k, title: k, loading: false, close: false }).collect();
                 board(ui, &Colors::default(), l, &cards, DEFAULT, |ui, k| {
                     ui.label(format!("body of {k}"));
                 });
@@ -802,7 +866,7 @@ mod tests {
         l.stacks[1].set_rect(Rect::from_min_size(pos2(100.0, 10.0), vec2(300.0, 200.0)));
         let mut h = egui_kittest::Harness::builder().with_size(vec2(800.0, 600.0)).build_ui_state(
             |ui, l: &mut Layout| {
-                let cards: Vec<Card> = KEYS.iter().map(|k| Card { key: k, title: k, loading: false }).collect();
+                let cards: Vec<Card> = KEYS.iter().map(|k| Card { key: k, title: k, loading: false, close: false }).collect();
                 board(ui, &Colors::default(), l, &cards, DEFAULT, |ui, k| {
                     if k == "b" {
                         let r = egui::ComboBox::from_id_salt("pick").selected_text("one").show_ui(ui, |ui| {
@@ -909,7 +973,7 @@ mod tests {
         l.stacks[1].set_rect(Rect::from_min_size(pos2(320.0, 0.0), vec2(300.0, 200.0)));
         let mut h = egui_kittest::Harness::builder().with_size(vec2(800.0, 600.0)).build_ui_state(
             |ui, l: &mut Layout| {
-                let cards: Vec<Card> = KEYS.iter().map(|k| Card { key: k, title: k, loading: false }).collect();
+                let cards: Vec<Card> = KEYS.iter().map(|k| Card { key: k, title: k, loading: false, close: false }).collect();
                 board(ui, &Colors::default(), l, &cards, DEFAULT, |ui, k| {
                     ui.label(format!("body of {k}"));
                 });
