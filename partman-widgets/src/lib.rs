@@ -207,6 +207,74 @@ impl IconButton {
     }
 }
 
+/// A button giving an agent a task, as the style guide has them: a little
+/// taller than other buttons, a larger, slanted, bold A in its own colour
+/// at its left, standing for "Agent", then an em, then the task. Named
+/// "Agent: task" for screen readers, which don't see the A.
+pub struct AgentButton {
+    text: String,
+    color: Color32,
+    family: Option<egui::FontFamily>,
+    enabled: bool,
+}
+
+/// The A's colour unless one's given.
+pub const AGENT_RED: Color32 = Color32::from_rgb(0xe0, 0x4a, 0x3f);
+
+impl AgentButton {
+    pub fn new(text: impl Into<String>) -> AgentButton {
+        AgentButton { text: text.into(), color: AGENT_RED, family: None, enabled: true }
+    }
+
+    /// The A's colour.
+    pub fn color(mut self, color: Color32) -> AgentButton {
+        self.color = color;
+        self
+    }
+
+    /// A bold font family for the A, where the app has one; without, the
+    /// body font's A is drawn twice a little apart to be bolder.
+    pub fn family(mut self, family: egui::FontFamily) -> AgentButton {
+        self.family = Some(family);
+        self
+    }
+
+    pub fn enabled(mut self, enabled: bool) -> AgentButton {
+        self.enabled = enabled;
+        self
+    }
+
+    pub fn show(self, ui: &mut Ui) -> Response {
+        let pad = ui.spacing().button_padding;
+        let body = TextStyle::Button.resolve(ui.style());
+        let a_font = egui::FontId::new(body.size * 1.3, self.family.clone().unwrap_or(body.family.clone()));
+        let enabled = self.enabled;
+        let a_color = if enabled { self.color } else { ui.visuals().weak_text_color() };
+        let a = WidgetText::from(egui::RichText::new("A").font(a_font).italics().color(a_color)).into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, TextStyle::Button);
+        let text = WidgetText::from(self.text.as_str()).into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, TextStyle::Button);
+        let gap = em(ui);
+        // Taller than other buttons, by a little
+        let height = row_height(ui).max(a.size().y) + 2.0 * pad.y + 4.0;
+        let width = pad.x + a.size().x + gap + text.size().x + pad.x;
+        let (rect, response) = ui.allocate_exact_size(vec2(width, height), if enabled { Sense::click() } else { Sense::hover() });
+        let name = format!("Agent: {}", self.text);
+        response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, &name));
+        if ui.is_rect_visible(rect) {
+            let v = if enabled { ui.style().interact(&response) } else { &ui.visuals().widgets.noninteractive };
+            ui.painter().rect(rect, v.corner_radius, v.weak_bg_fill, v.bg_stroke, egui::StrokeKind::Inside);
+            let at = egui::pos2(rect.left() + pad.x, rect.center().y - a.size().y / 2.0);
+            ui.painter().galley(at, a.clone(), a_color);
+            if self.family.is_none() {
+                ui.painter().galley(at + vec2(0.7, 0.0), a.clone(), a_color);
+            }
+            let color = if enabled { v.fg_stroke.color } else { ui.visuals().weak_text_color() };
+            let tx = egui::pos2(at.x + a.size().x + gap, rect.center().y - text.size().y / 2.0);
+            ui.painter().galley(tx, text, color);
+        }
+        response
+    }
+}
+
 /// An icon button, enabled: its response.
 pub fn icon_button(ui: &mut Ui, icon: Icon) -> Response {
     IconButton::new(icon).show(ui)
@@ -240,6 +308,30 @@ mod tests {
         });
         h.run();
         assert!(h.query_by_label("Shell commands too").is_some() && h.query_by_label("One").is_some());
+    }
+
+    #[test]
+    fn agent_buttons_are_taller_and_named_agent() {
+        let mut h = egui_kittest::Harness::new_ui_state(
+            |ui, clicks: &mut i32| {
+                ui.horizontal(|ui| {
+                    let plain = ui.button("Plain").rect.height();
+                    let r = AgentButton::new("Review").show(ui);
+                    assert!(r.rect.height() > plain, "{} {plain}", r.rect.height());
+                    if r.clicked() {
+                        *clicks += 1;
+                    }
+                    AgentButton::new("Busy").enabled(false).show(ui);
+                });
+            },
+            0,
+        );
+        h.run();
+        h.get_by_label("Agent: Review").click();
+        h.run();
+        h.get_by_label("Agent: Busy").click();
+        h.run();
+        assert_eq!(*h.state(), 1);
     }
 
     #[test]

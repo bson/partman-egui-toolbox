@@ -29,7 +29,10 @@ Use `blank_row`, `check`, `radio` and `explanation` in place of egui's
 own spacing, checkbox and radio button, and `IconButton` (or
 `icon_button`) for those actions. An icon button is named for screen
 readers by what it does, and can be given a fuller name and disabled.
-The guide's other button conventions are words: "Add" to add, and a
+`AgentButton` is the guide's button giving an agent a task: a larger,
+slanted, bold red A, standing for "Agent", then the task, a little taller
+than other buttons; the app can give it a bold font for the A. The
+guide's other button conventions are words: "Add" to add, and a
 button opening a dialog or needing more done ends in "…".
 
 ## Building

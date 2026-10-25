@@ -15,6 +15,11 @@ sections of the toolbox's `STYLE.md`.
 - `Icon`: `Delete`, `Download`, `Open`, `Reload`, `MoveUp`, `MoveDown`,
   `Check`,
   with `name()` and `paint(painter, rect, stroke)`.
+- `AgentButton::new(task)`, then `color(..)` (`AGENT_RED` by default),
+  `family(..)` (a bold font family for the A) and `enabled(..)`, then
+  `show(ui)`. The A is 1.3 times the button text, slanted (egui's
+  italics); without a bold family it's drawn twice 0.7 apart. An em
+  after it, the task; 4 taller than a plain button. Named "Agent: task".
 - `IconButton::new(icon)`, then `name(..)`, `text(..)` (after the icon,
   and its name unless one's given), `color(..)` (while enabled, where the
   colour says something) and `enabled(..)`, then
