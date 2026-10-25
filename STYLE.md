@@ -242,3 +242,106 @@ agent sidebar slides shut.  When opened again it returns to the user's
 preferred width.  The preferred width is saved with the other agent
 settings.  When slide open the width is capped to the entire work area
 width.
+
+## General Layout
+
+### Vertical spacing
+
+In general 1.5x the height of a text row is how much is used for vertical
+spacing.  It can be referred to as "a blank line", "blank row" or similar
+terms.  For UI element layout this and similar terms refer to the vertical
+spacing.
+
+Spacing should be inserted between groups of related elements.
+
+This spacing does not apply to rendered text or MarkDown (MD).
+
+Spacing should be inserted between title headers and other elements.
+Spacing should be inserted below buttons.
+
+### Control labels
+
+A label applying to a checkbox or radio button should be place to the
+right of it, with a one-emm spacing (the width of the label font's
+'m').  This can be approximated based on font size and doesn't have to
+be exact.  If the font has a emm-space, then this can be used.
+
+### Tables and tabulation
+
+When something is listed as a table the table should have a header
+above each column, except for a left-most checkbox or radio button to
+select it.  For selection column there can be a selection checkbox to
+select all elements in the table, if this is possible.  If all, and
+only exactly all, rows in the table are selected this should deselect
+them all.
+
+Selecting while pressing the control key should toggle one row's
+selection control if it's a checkbox and multiple rows can be
+selected.  If it's a radio control or only one row can be selected it
+acts as a regular click.
+
+Selecting while pressing the shift key should toggle all rows'
+selection controls between the click point and the last click point if
+they're checkboxes and multiple rows can be selected.  If only one row
+can be selected it acts as a regular click.
+
+Tables should be wide enough to use most of the window or card space.
+
+Columns should be adjustable.
+
+Any controls, like a delete button, applying to 1 or more rows should
+be placed below the table, and table rows be selectable.  With nothing
+selected, the controls should be grayed out.
+
+Buttons that act on a selection should be placed side by side below
+the table rows.  If there are too many to fit within the available
+space they can wrap to a second or more lines.
+
+Above header and below the buttons the table is separated visually
+from other elements with a blank row (see blank rows, above).
+
+If a table is scrollable, only the data rows should form a scrollable
+element.  The header and action buttons below should not scroll with
+the table.  (They would of course still scroll with the entire window,
+card, dialog or work area.)
+
+Action buttons are never placed on a data row.
+
+If data rows contain active elements, then clicking on them still
+performs their action, such as opening a link.  They can still be
+hovered over.  But clicking anywhere else in the row that's inert,
+should toggle its selection.  Clicking in a row checkbox or radio
+button should only ever perform a selection.
+
+Where it makes sense a table should have a reload button.
+
+Table state like the active selection and scroll position should be
+retained between app restarts and workflow step navigation.
+
+### Buttons
+
+A delete button is always a wastebasket.
+
+A download button is always an open box with a downarrow.
+
+A follow link or open elsewhere, or open external app, should always
+be a box with an arrow pointing up and out of it towards the right.
+
+A reload button should always be a circular arrow chasing its own
+tail.
+
+An add button should have the text "Add".
+
+A move up button should be a double up caret.  This would apply mainly
+to tables, but could make sense in some other contexts as well.
+
+A move down button should be a double down caret.  This would apply mainly
+to tables, but could make sense in some other contexts as well.
+
+A button that opens a dialog, or requires additional work and doesn't
+just add a blank or object should have a diaresis at its end ("..." as
+a single character).
+
+If there is text tied to the button, such as a warning, information,
+or explanation, then it's placed on a line before the button and a
+blank row insert above it.
