@@ -321,6 +321,10 @@ Where it makes sense a table should have a reload button.
 Table state like the active selection and scroll position should be
 retained between app restarts and workflow step navigation.
 
+Separate non-agentic and agentic action buttons below a table so
+that they're on separate lines since their sizes differ.  First the
+regular action buttons, then the agentic ones.
+
 ### Buttons
 
 A delete button is always a wastebasket.
@@ -354,3 +358,6 @@ When a button launches an agent task, use a particular style:
 2. To its far left it has a slightly larger, cursive, bold A in a different color (I'd suggest red).
 3. There is an emm-space, then the task string.
 4. This stylized and larger A replaces a prefix string such as "Agent:" or "Agent task:".
+
+When there are multiple buttons, always put agentic task launcher
+buttons on a separate line.
