@@ -100,6 +100,9 @@ When dragging visual items like cards around it's important that the
 card is visually moved around.  Dragging can be canceled with the ESC
 key, facilitating a return to the pre-drag state.
 
+Pressing Enter can perform a default action.  If this is the case, the
+control for that action, such as a button, should be highlighted.
+
 ### Dragging to Reorder
 
 If things are moved around and their relative ordering (one or two
@@ -345,3 +348,9 @@ a single character).
 If there is text tied to the button, such as a warning, information,
 or explanation, then it's placed on a line before the button and a
 blank row insert above it.
+
+When a button launches an agent task, use a particular style:
+1. The button is slightly taller that other buttons.
+2. To its far left it has a slightly larger, cursive, bold A in a different color (I'd suggest red).
+3. There is an emm-space, then the task string.
+4. This stylized and larger A replaces a prefix string such as "Agent:" or "Agent task:".
