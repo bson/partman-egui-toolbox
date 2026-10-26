@@ -33,6 +33,9 @@ and uses partman-widgets for blank rows and the reload button.
   read and written each frame. egui_extras keeps the column widths and
   egui the scroll offset, persisted, under ids from the table's id. All
   of it outlasts a run only with eframe's persistence.
+- **Scrolling**: the rows' area is reported to `partman-scroll`
+  (`partman_scroll::area` on what egui_extras' `body` gives back), so a
+  notch over a scrolling table moves a share of its height.
 - **Fitting:** the columns but the last start at their widths (the app's,
   given by `widths` and of the right count, else each `Col`'s), and the
   last takes the rest. When they'd be wider than the room (the widths, the

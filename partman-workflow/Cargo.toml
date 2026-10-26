@@ -9,6 +9,7 @@ repository.workspace = true
 
 [dependencies]
 egui.workspace = true
+partman-scroll = { path = "../partman-scroll" }
 
 [dev-dependencies]
 egui_kittest.workspace = true

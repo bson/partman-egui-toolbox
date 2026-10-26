@@ -242,15 +242,14 @@ fn area_id() -> Id {
 pub fn card_area<R>(ui: &mut Ui, width: Width, contents: impl FnOnce(&mut Ui) -> R) -> R {
     let w = ui.available_width().min(width.max).max(width.min);
     let height = ui.available_height();
-    egui::ScrollArea::both()
-        .auto_shrink([false, false])
-        .show(ui, |ui| {
-            ui.set_width(w);
-            let top = ui.cursor().top();
-            ui.data_mut(|d| d.insert_temp(area_id(), Area { top, height }));
-            contents(ui)
-        })
-        .inner
+    let shown = egui::ScrollArea::both().auto_shrink([false, false]).show(ui, |ui| {
+        ui.set_width(w);
+        let top = ui.cursor().top();
+        ui.data_mut(|d| d.insert_temp(area_id(), Area { top, height }));
+        contents(ui)
+    });
+    partman_scroll::area(ui.ctx(), &shown);
+    shown.inner
 }
 
 /// How tall a scrolling table or list at the cursor can be and still

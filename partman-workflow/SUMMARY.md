@@ -40,6 +40,8 @@ the toolbox's `STYLE.md`; the pin planner is its first user.
   `fit_height` measures from the cursor against that, so a table knows
   what's left for it inside the scroll area, where egui's own available
   height is unbounded.
+- **Scrolling**: the work area is reported to `partman-scroll`, so a
+  notch over it moves a share of its height.
 
 ## Tests
 

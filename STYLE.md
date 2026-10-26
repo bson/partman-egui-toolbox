@@ -372,3 +372,16 @@ When a button launches an agent task, use a particular style:
 
 When there are multiple buttons, always put agentic task launcher
 buttons on a separate line.
+
+## Scrollbar behavior
+
+### Adaptive speed
+
+When scrolling a table or area, make the scroll faster the taller the
+scrollable area so that a certain amount of scrolling with a mouse or
+trackpad moves a similar proportion of the scrollable area.
+
+### Coasting
+
+When using touch or a trackpad to scroll and it's released mid-scroll,
+coast for a while as if it had momentum, gradually slowing down.

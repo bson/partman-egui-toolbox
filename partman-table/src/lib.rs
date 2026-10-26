@@ -249,7 +249,7 @@ impl<'a> Table<'a> {
         let first = usize::from(self.select != Select::None);
         let mut resized = false;
         let every = !self.keys.is_empty() && self.keys.iter().all(|k| state.selected.contains(k));
-        b.header(h, |mut head| {
+        let rows = b.header(h, |mut head| {
             if self.select != Select::None {
                 head.col(|ui| {
                     if self.select == Select::Many && !self.keys.is_empty() {
@@ -338,6 +338,8 @@ impl<'a> Table<'a> {
                 });
             }
         });
+        // Its rows' area, for scrolling over it to go by its height
+        partman_scroll::area(ui.ctx(), &rows);
 
         if let Some(on) = all {
             state.selected = if on { self.keys.iter().cloned().collect() } else { BTreeSet::new() };

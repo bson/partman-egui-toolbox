@@ -11,6 +11,7 @@ repository.workspace = true
 egui.workspace = true
 egui_extras.workspace = true
 serde.workspace = true
+partman-scroll = { path = "../partman-scroll" }
 partman-widgets = { path = "../partman-widgets" }
 
 [dev-dependencies]

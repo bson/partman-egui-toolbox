@@ -513,7 +513,7 @@ pub fn board(ui: &mut Ui, t: &Colors, layout: &mut Layout, cards: &[Card], defau
         .id_salt(board_id)
         .auto_shrink([false, false])
         .scroll_source(egui::scroll_area::ScrollSource::SCROLL_BAR | egui::scroll_area::ScrollSource::MOUSE_WHEEL);
-    scroll.show(ui, |ui| {
+    let shown = scroll.show(ui, |ui| {
         let origin = ui.cursor().min.to_vec2();
         layout.origin = origin;
         // Nothing's above or left of the board's corner, though its clip
@@ -617,14 +617,12 @@ pub fn board(ui: &mut Ui, t: &Colors, layout: &mut Layout, cards: &[Card], defau
             let body = Rect::from_min_max(pos2(r.min.x, bar.max.y), r.max).shrink(PAD);
             let mut child = ui.new_child(UiBuilder::new().max_rect(body).layout(egui::Layout::top_down(Align::Min)).id_salt(("card", &s.top)));
             child.set_clip_rect(body.expand(PAD / 2.0).intersect(clip));
-            let h = egui::ScrollArea::vertical()
-                .id_salt(("card", &s.top))
-                .auto_shrink([false, false])
-                .show(&mut child, |ui| {
-                    content(ui, &s.top);
-                    ui.min_rect().height()
-                })
-                .inner;
+            let body = egui::ScrollArea::vertical().id_salt(("card", &s.top)).auto_shrink([false, false]).show(&mut child, |ui| {
+                content(ui, &s.top);
+                ui.min_rect().height()
+            });
+            partman_scroll::area(child.ctx(), &body);
+            let h = body.inner;
             layout.heights.insert(s.top.clone(), h);
             // The stack a card carried would join, outlined over its
             // contents
@@ -675,6 +673,7 @@ pub fn board(ui: &mut Ui, t: &Colors, layout: &mut Layout, cards: &[Card], defau
             _ => {}
         }
     });
+    partman_scroll::area(ui.ctx(), &shown);
     changed
 }
 

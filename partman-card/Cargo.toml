@@ -9,6 +9,7 @@ repository.workspace = true
 
 [dependencies]
 egui.workspace = true
+partman-scroll = { path = "../partman-scroll" }
 serde.workspace = true
 serde_json.workspace = true
 

@@ -473,8 +473,17 @@ version = "0.1.0"
 dependencies = [
  "egui",
  "egui_kittest",
+ "partman-scroll",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "partman-scroll"
+version = "0.1.0"
+dependencies = [
+ "egui",
+ "egui_kittest",
 ]
 
 [[package]]
@@ -492,6 +501,7 @@ dependencies = [
  "egui",
  "egui_extras",
  "egui_kittest",
+ "partman-scroll",
  "partman-widgets",
  "serde",
 ]
@@ -510,6 +520,7 @@ version = "0.1.0"
 dependencies = [
  "egui",
  "egui_kittest",
+ "partman-scroll",
 ]
 
 [[package]]

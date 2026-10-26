@@ -6,6 +6,9 @@ egui version and the package metadata through `[workspace.package]` and
 
 - `partman-card/`: the board of cards. It was the egui-cards repository,
   moved here with its history.
+- `partman-scroll/`: adaptive scroll speed and momentum, for every
+  scroll area at once. `partman-card`, `partman-table` and
+  `partman-workflow` report their scroll areas to it.
 - `partman-sidebar/`: the agent sidebar, first used by the pin planner.
 - `partman-workflow/`: workflows, first used by the pin planner.
 - `STYLE.md`: the style and design guide the components follow, moved

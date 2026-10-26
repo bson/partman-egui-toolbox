@@ -53,6 +53,8 @@ before the toolbox held it.
 
 ## Behaviour worth knowing
 
+- **Scrolling**: the board and each card's body are reported to
+  `partman-scroll`, so a notch over either moves a share of its size.
 - **Fitted layouts** are laid out by `fit`: stacks one under another
   across the board, each as tall as its shown card's contents last frame,
   the last taking the rest. Moving or resizing a stack ends that.

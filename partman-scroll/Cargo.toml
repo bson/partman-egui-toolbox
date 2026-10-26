@@ -1,0 +1,14 @@
+[package]
+name = "partman-scroll"
+description = "Scrolling as the toolbox's style guide has it, for egui: a notch moves a share of the area scrolled, and a trackpad swipe let go of carries on"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+egui.workspace = true
+
+[dev-dependencies]
+egui_kittest.workspace = true
