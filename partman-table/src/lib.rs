@@ -31,17 +31,28 @@ pub enum Select {
     Many,
 }
 
-/// A column: its header, and how wide it starts and can be made.
+/// What a column's rows are sorted by, one for each row, in the rows'
+/// order as given.
+#[derive(Clone, Debug, PartialEq)]
+pub enum SortBy {
+    /// Text, compared without case
+    Text(Vec<String>),
+    Number(Vec<f64>),
+}
+
+/// A column: its header, how wide it starts and can be made, and what
+/// sorts it, if it can be.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Col {
     title: String,
     width: f32,
     min: f32,
+    sort: Option<SortBy>,
 }
 
 impl Col {
     pub fn new(title: impl Into<String>) -> Col {
-        Col { title: title.into(), width: 120.0, min: 40.0 }
+        Col { title: title.into(), width: 120.0, min: 40.0, sort: None }
     }
 
     /// How wide it starts. The last column takes the rest of the room.
@@ -55,6 +66,29 @@ impl Col {
         self.min = min;
         self
     }
+
+    /// Sortable by clicking its header, its rows by these.
+    pub fn sort(mut self, by: SortBy) -> Col {
+        self.sort = Some(by);
+        self
+    }
+}
+
+/// The order rows are shown in: by the column sorted on, if it can be,
+/// ascending or not; ties, and without one, as given.
+fn order(cols: &[Col], n: usize, sorted: Option<&(String, bool)>) -> Vec<usize> {
+    let mut at: Vec<usize> = (0..n).collect();
+    let Some((title, up)) = sorted else { return at };
+    let Some(by) = cols.iter().find(|c| &c.title == title).and_then(|c| c.sort.as_ref()) else { return at };
+    match by {
+        SortBy::Text(v) if v.len() == n => at.sort_by_key(|&i| v[i].to_lowercase()),
+        SortBy::Number(v) if v.len() == n => at.sort_by(|&a, &b| v[a].total_cmp(&v[b])),
+        _ => return at,
+    }
+    if !up {
+        at.reverse();
+    }
+    at
 }
 
 /// What's kept of a table between frames and runs.
@@ -63,6 +97,8 @@ struct State {
     selected: BTreeSet<String>,
     /// The row last clicked, which a shift-click selects from
     anchor: Option<String>,
+    /// The column sorted on, by title, and whether ascending
+    sorted: Option<(String, bool)>,
 }
 
 /// A table, drawn by `show`.
@@ -81,7 +117,7 @@ pub struct Table<'a> {
 /// What came of showing it.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Shown {
-    /// The selected rows' keys, in the rows' order
+    /// The selected rows' keys, in the order shown
     pub selected: Vec<String>,
     /// The reload button was pressed
     pub reload: bool,
@@ -139,7 +175,8 @@ impl<'a> Table<'a> {
         self
     }
 
-    /// Draws it: `row` fills in a row's cells, by the row's place in keys,
+    /// Draws it: `row` fills in a row's cells, by the row's place in keys
+    /// as given, whatever order it's shown in,
     /// one `col` per column given; `actions` adds the buttons acting on the
     /// selection, given its keys, which are to be disabled when it's empty.
     pub fn show(self, ui: &mut Ui, row: impl FnMut(&mut TableRow<'_, '_>, usize), actions: impl FnOnce(&mut Ui, &[String])) -> Shown {
@@ -167,6 +204,10 @@ impl<'a> Table<'a> {
             state.selected.retain(|k| self.keys.contains(k));
         }
         let h = self.row_height.unwrap_or(row_height(ui) + 6.0);
+        // The rows as shown, sorted or not; clicks and ranges go by these
+        let shown_at = order(&self.cols, self.keys.len(), state.sorted.as_ref());
+        let shown_keys: Vec<String> = shown_at.iter().map(|&i| self.keys[i].clone()).collect();
+        let mut sort_click: Option<String> = None;
         let mut clicked: Option<(usize, Modifiers)> = None;
         let mut all = None;
 
@@ -223,7 +264,26 @@ impl<'a> Table<'a> {
             }
             for c in &self.cols {
                 head.col(|ui| {
-                    ui.label(RichText::new(&c.title).strong());
+                    let r = ui.label(RichText::new(&c.title).strong());
+                    if c.sort.is_some() {
+                        // The whole header cell takes the click, its arrow at
+                        // the right while it's the one sorted on
+                        let cell = ui.max_rect();
+                        let hit = ui.interact(cell, ui.id().with(("sort", &c.title)), Sense::click()).on_hover_text("Sort by this; again, the other way");
+                        hit.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, format!("Sort by {}", c.title)));
+                        if hit.clicked() || r.clicked() {
+                            sort_click = Some(c.title.clone());
+                        }
+                        if let Some((t, up)) = &state.sorted
+                            && *t == c.title
+                        {
+                            let color = ui.visuals().strong_text_color();
+                            let x = cell.right() - 8.0;
+                            let y = cell.center().y;
+                            let pts = if *up { vec![egui::pos2(x - 4.0, y + 2.5), egui::pos2(x + 4.0, y + 2.5), egui::pos2(x, y - 3.5)] } else { vec![egui::pos2(x - 4.0, y - 2.5), egui::pos2(x + 4.0, y - 2.5), egui::pos2(x, y + 3.5)] };
+                            ui.painter().add(egui::Shape::convex_polygon(pts, color, egui::Stroke::NONE));
+                        }
+                    }
                 });
             }
         })
@@ -251,7 +311,8 @@ impl<'a> Table<'a> {
                     resized = true;
                 }
             }
-            for (i, key) in self.keys.iter().enumerate() {
+            for (shown, key) in shown_keys.iter().enumerate() {
+                let i = shown_at[shown];
                 let on = state.selected.contains(key);
                 body.row(h, |mut r| {
                     r.set_selected(on);
@@ -260,10 +321,10 @@ impl<'a> Table<'a> {
                         r.col(|ui| {
                             let resp = if self.select == Select::Many { ui.checkbox(&mut on.clone(), "") } else { ui.radio(on, "") };
                             let kind = if self.select == Select::Many { WidgetType::Checkbox } else { WidgetType::RadioButton };
-                            resp.widget_info(|| WidgetInfo::selected(kind, true, on, format!("Select row {}", i + 1)));
+                            resp.widget_info(|| WidgetInfo::selected(kind, true, on, format!("Select row {}", shown + 1)));
                             if resp.clicked() {
                                 took = true;
-                                clicked = Some((i, ui.input(|inp| inp.modifiers)));
+                                clicked = Some((shown, ui.input(|inp| inp.modifiers)));
                             }
                         });
                     }
@@ -272,7 +333,7 @@ impl<'a> Table<'a> {
                     // in it has taken its own
                     let resp = r.response();
                     if !took && resp.clicked() {
-                        clicked = Some((i, resp.ctx.input(|inp| inp.modifiers)));
+                        clicked = Some((shown, resp.ctx.input(|inp| inp.modifiers)));
                     }
                 });
             }
@@ -281,10 +342,16 @@ impl<'a> Table<'a> {
         if let Some(on) = all {
             state.selected = if on { self.keys.iter().cloned().collect() } else { BTreeSet::new() };
         }
-        if let Some((i, mods)) = clicked {
-            click(&mut state, self.keys, i, mods, self.select);
+        if let Some((shown, mods)) = clicked {
+            click(&mut state, &shown_keys, shown, mods, self.select);
         }
-        let selected: Vec<String> = self.keys.iter().filter(|k| state.selected.contains(*k)).cloned().collect();
+        if let Some(t) = sort_click {
+            state.sorted = match state.sorted.take() {
+                Some((was, up)) if was == t => Some((t, !up)),
+                _ => Some((t, true)),
+            };
+        }
+        let selected: Vec<String> = shown_keys.iter().filter(|k| state.selected.contains(*k)).cloned().collect();
         let mut reload = false;
         ui.horizontal_wrapped(|ui| {
             actions(ui, &selected);
@@ -496,6 +563,47 @@ mod tests {
         h.run();
         let (one, two) = (h.get_by_label("One").rect().left(), h.get_by_label("Two").rect().left());
         assert!((two - one - 50.0).abs() < 12.0, "started at the kept width: {one} {two}");
+    }
+
+    /// Sorted by clicking a sortable header, again the other way; the
+    /// row callback still gets the row's place as given.
+    #[test]
+    fn sorted_by_header() {
+        let keys: Vec<String> = ["b", "c", "a"].map(String::from).to_vec();
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(600.0, 300.0)).build_ui(|ui| {
+            Table::new("sorting", &keys)
+                .select(Select::Many)
+                .column(Col::new("Name").sort(SortBy::Text(keys.clone())))
+                .column(Col::new("Size").sort(SortBy::Number(vec![2.0, 30.0, 10.0])))
+                .show(
+                    ui,
+                    |r, i| {
+                        r.col(|ui| {
+                            ui.label(format!("row {}", keys[i]));
+                        });
+                        r.col(|ui| {
+                            ui.label("-");
+                        });
+                    },
+                    |_, _| {},
+                );
+        });
+        h.run();
+        let tops = |h: &egui_kittest::Harness<'_>| ["a", "b", "c"].map(|k| h.get_by_label(&format!("row {k}")).rect().top());
+        let [a, b, c] = tops(&h);
+        assert!(b < c && c < a, "as given");
+        h.get_by_label("Sort by Name").click();
+        h.run();
+        let [a, b, c] = tops(&h);
+        assert!(a < b && b < c, "by name");
+        h.get_by_label("Sort by Name").click();
+        h.run();
+        let [a, b, c] = tops(&h);
+        assert!(c < b && b < a, "by name, down");
+        h.get_by_label("Sort by Size").click();
+        h.run();
+        let [a, b, c] = tops(&h);
+        assert!(b < a && a < c, "by size");
     }
 
     /// Kept while the rows are loading again, and those gone let go.

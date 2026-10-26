@@ -6,6 +6,10 @@ and uses partman-widgets for blank rows and the reload button.
 
 ## API
 
+- `Col::sort(SortBy::Text(..) | SortBy::Number(..))`: the column's rows'
+  sort values, in the rows' order as given; text is compared without
+  case. A table whose rows have nothing done to them is made with
+  `Select::None`, as the style guide has it: no checkbox column.
 - `Table::new(id, &keys)`, then `select(Select::None | One | Many)`,
   `column(Col::new(title).width(w).at_least(min))` for each,
   `max_height(h)` (the rows' before they scroll, 300 by default),
@@ -39,6 +43,13 @@ and uses partman-widgets for blank rows and the reload button.
 - **App-kept widths** take the user's once a drag's over, not at each step
   of it, and never scaled ones. They're for an app keeping widths in its
   settings; egui_extras keeps them in egui's memory regardless.
+- **Sorting:** the column sorted on and the direction are kept with the
+  selection, by the column's title. Rows are shown in its order (a stable
+  sort, ties as given, reversed going down); `row` still gets a row's
+  place as given, and `Select row N`, Shift ranges and `selected` follow
+  the order shown. A sortable header's whole cell takes the click
+  (`Sort by Title`), and the one sorted on has a filled arrow at its
+  right, up ascending, down descending.
 - **Rows gone** are dropped from the selection, but not while there are
   no rows at all, which is how a table reads while it's loading again.
 - **Clicks:** the table senses clicks on rows; a widget in a cell takes

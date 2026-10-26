@@ -15,6 +15,11 @@ style and design guide, [STYLE.md](../STYLE.md), has them:
   disabled while nothing's selected, with a reload button where it
   makes sense, and buttons giving an agent a task on a line of their own
   under them. No action is on a row.
+- **Sorted by a header,** for columns the app gives sort values: a click
+  on the header sorts by it, another the other way, an arrow at the
+  header's right showing which and how.
+- **No selection without actions:** a table with nothing to do on
+  selected rows is made without selection, and has no checkbox column.
 - **Only the rows scroll;** the header and the actions stay put.
 - **Kept.** The selection, the row last clicked and the scroll position
   are kept under the table's id, through the app's steps and from one
