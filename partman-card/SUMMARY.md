@@ -30,6 +30,10 @@ before the toolbox held it.
     `card_rect_at(point)` (and `card_screen_rect_at`, to draw it) is
     where a card put there goes, its bar's left under it, kept within
     what's seen; `add_at(key, point)` adds one there.
+  - `tab_at(screen)` is the card whose tab is under a screen point, with
+    the tab's rect, as last drawn (`drawn`, `clip`, not saved): for
+    something the app drags to be dropped on that card, on top or not.
+    A tab under a stack drawn later isn't there.
   - What's seen and where the board's content is on the screen are taken
     each frame `board` draws it (`seen`, `origin`, not saved), cut to the
     board's top left corner, which the clip reaches a little past.
@@ -72,7 +76,8 @@ before the toolbox held it.
   go.
 - **Tabs** are dragged sideways to reorder (`Drag::Tabs`), or up or down
   past `DECIDE` to take the card off (`Drag::Move` with `card`), which
-  joins a stack when dropped on its bar (`bar_at`).
+  joins a stack when dropped on its bar (`bar_at`); that stack is
+  outlined, its bar tinted, while the card's over it.
 
 ## Tests
 

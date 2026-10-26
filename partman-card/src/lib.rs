@@ -111,6 +111,12 @@ pub struct Layout {
     /// The card whose close mark was pressed, for the app to take
     #[serde(skip)]
     closed: Option<String>,
+    /// The stacks on the screen as last drawn, in drawing order, each with
+    /// its tabs, and the board's clip: what's under a drag over the board
+    #[serde(skip)]
+    drawn: Vec<(Rect, Vec<(String, Rect)>)>,
+    #[serde(skip)]
+    clip: Option<Rect>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -310,6 +316,18 @@ impl Layout {
     pub fn add_at(&mut self, key: &str, at: Pos2) {
         let r = self.card_rect_at(at);
         self.stacks.push(Stack::of(vec![key.to_string()], r));
+    }
+
+    /// The card whose tab is at a point on the screen, with the tab's rect,
+    /// as last drawn: for something dragged over the board to be dropped
+    /// on that card, whether it's on top or not. A tab under another stack
+    /// isn't there.
+    pub fn tab_at(&self, screen: Pos2) -> Option<(&str, Rect)> {
+        if !self.clip?.contains(screen) {
+            return None;
+        }
+        let (_, tabs) = self.drawn.iter().rev().find(|(r, _)| r.contains(screen))?;
+        tabs.iter().find(|(_, r)| r.contains(screen)).map(|(k, r)| (k.as_str(), *r))
     }
 
     /// Whether the card is on top of its stack.
@@ -520,6 +538,8 @@ pub fn board(ui: &mut Ui, t: &Colors, layout: &mut Layout, cards: &[Card], defau
         let mut start = None;
         let mut shown = None;
         let clip = ui.clip_rect();
+        layout.clip = Some(clip);
+        layout.drawn.clear();
         for i in 0..layout.stacks.len() {
             let s = layout.stacks[i].clone();
             let r = s.rect().translate(origin);
@@ -535,14 +555,16 @@ pub fn board(ui: &mut Ui, t: &Colors, layout: &mut Layout, cards: &[Card], defau
             let bar = s.bar().translate(origin);
             painter.rect_filled(bar, CornerRadius { nw: 6, ne: 6, sw: 0, se: 0 }, bar_fill);
             if target == Some(i) {
-                painter.rect_stroke(bar, CornerRadius { nw: 6, ne: 6, sw: 0, se: 0 }, Stroke::new(1.5, t.accent), StrokeKind::Inside);
+                painter.rect_filled(bar, CornerRadius { nw: 6, ne: 6, sw: 0, se: 0 }, t.accent.gamma_multiply(0.25));
             }
             let b = ui.interact(bar, id.with("bar"), Sense::drag()).on_hover_cursor(CursorIcon::Grab);
             if b.drag_started() {
                 let grab = press.map_or(Vec2::ZERO, |p| on_board(p) - s.rect().min);
                 start = Some((i, Drag::Move { stack: i, grab, card: false }));
             }
-            for (k, tr) in s.cards.iter().zip(tab_rects(r, &s.cards, width)) {
+            let trs = tab_rects(r, &s.cards, width);
+            layout.drawn.push((r, s.cards.iter().cloned().zip(trs.iter().copied()).collect()));
+            for (k, &tr) in s.cards.iter().zip(&trs) {
                 let title = cards.iter().find(|c| c.key == k).map_or("", |c| c.title);
                 let on = *k == s.top;
                 let tab = ui.interact(tr, id.with(("tab", k)), Sense::click_and_drag());
@@ -604,6 +626,11 @@ pub fn board(ui: &mut Ui, t: &Colors, layout: &mut Layout, cards: &[Card], defau
                 })
                 .inner;
             layout.heights.insert(s.top.clone(), h);
+            // The stack a card carried would join, outlined over its
+            // contents
+            if target == Some(i) {
+                painter.rect_stroke(r, 6, Stroke::new(2.0, t.accent), StrokeKind::Inside);
+            }
             let grip = Rect::from_min_max(r.max - vec2(GRIP, GRIP), r.max);
             let g = ui.interact(grip, id.with("grip"), Sense::drag()).on_hover_cursor(CursorIcon::ResizeNwSe);
             for n in 1..=3 {
@@ -730,6 +757,23 @@ mod tests {
         let mut full = laid(&[[0.0, 0.0, 1200.0, 800.0]], vec2(1200.0, 800.0));
         full.add_alone("d");
         assert_eq!(full.stacks[1].rect[0..2], [0.0, 816.0], "no room: under them all");
+    }
+
+    /// A tab's card is found under a point, but not where a stack drawn
+    /// later covers it, nor outside the board.
+    #[test]
+    fn tabs_under_a_point() {
+        let mut l = Layout { clip: Some(Rect::from_min_size(Pos2::ZERO, vec2(1000.0, 1000.0))), ..Default::default() };
+        let tab = |x: f32| Rect::from_min_size(pos2(x, 2.0), vec2(50.0, 20.0));
+        l.drawn.push((Rect::from_min_size(Pos2::ZERO, vec2(400.0, 300.0)), vec![("a".into(), tab(4.0)), ("b".into(), tab(54.0))]));
+        l.drawn.push((Rect::from_min_size(pos2(80.0, 0.0), vec2(300.0, 300.0)), vec![("c".into(), tab(84.0))]));
+        assert_eq!(l.tab_at(pos2(20.0, 10.0)).map(|t| t.0), Some("a"));
+        assert_eq!(l.tab_at(pos2(60.0, 10.0)).map(|t| t.0), Some("b"));
+        assert_eq!(l.tab_at(pos2(100.0, 10.0)).map(|t| t.0), Some("c"), "the stack over the other");
+        assert_eq!(l.tab_at(pos2(200.0, 10.0)), None, "on a bar, off its tabs");
+        assert_eq!(l.tab_at(pos2(20.0, 100.0)), None, "on the card");
+        l.clip = Some(Rect::from_min_size(pos2(30.0, 0.0), vec2(970.0, 1000.0)));
+        assert_eq!(l.tab_at(pos2(20.0, 10.0)), None, "clipped off the board");
     }
 
     /// A point on the board seen and on no stack is blank, and a card put
