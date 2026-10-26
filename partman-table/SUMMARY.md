@@ -16,6 +16,14 @@ and uses partman-widgets for blank rows and the reload button.
   `scroll(false)` (as tall as the rows, for a view that scrolls itself),
   `row_height(h)`, `reload()`, and `widths(&mut Vec<f32>)`, the columns'
   but the last, kept by the app.
+- For a page of a longer list: `Col::sort(SortBy::App)` sorts by the
+  app (`Shown::sorted`, the column's title and whether ascending, for it
+  to fetch rows in that order), `sorted(title, ascending)` the sort until
+  the user picks one, `selection(&mut BTreeSet<String>)` a selection the
+  app keeps, `row_heights(&[f32])` each row's height, `names(&[String])`
+  what each row is, for its control's name ("Select C1"), and
+  `click_opens()` a plain click opening a row (`Shown::opened`, its place
+  in keys as given).
 - `show_with_agents(ui, row, actions, agents)`: the same, with buttons
   giving an agent a task on the selection on a line of their own under
   the actions and the reload button, as the style guide has them.
@@ -55,6 +63,18 @@ and uses partman-widgets for blank rows and the reload button.
   right, up ascending, down descending.
 - **Rows gone** are dropped from the selection, but not while there are
   no rows at all, which is how a table reads while it's loading again.
+  An app's selection (`selection`) is taken as it is, rows on no page
+  shown included, and given back with the user's changes; select all and
+  none change only the rows given, and `Shown::selected` is those shown,
+  in order, then the rest.
+- **App sorting:** `SortBy::App` leaves the rows as given; the header
+  click and arrow are as for the others, and `Shown::sorted` says which.
+  `sorted` starts the table's kept sort, the user's taking over from it.
+- **Rows** are drawn with egui_extras' `heterogeneous_rows`, so only
+  those in sight are laid out; their heights are `row_heights` by the
+  rows' place as given, else `row_height`.
+- **Click opens:** a plain click on an inert part of a row opens it; with
+  Ctrl or Shift, or on the selection control, it selects as below.
 - **Clicks:** the table senses clicks on rows; a widget in a cell takes
   its own click first, so a row click is on an inert part. Selectable
   labels are turned off in the body, as they'd take the click. The
@@ -70,4 +90,5 @@ and uses partman-widgets for blank rows and the reload button.
   selection's text colour left links and coloured text unreadable in
   some themes.
 - **Names:** the header checkbox is "Select all", each row's control
-  "Select row N", for screen readers and tests.
+  "Select row N" (or "Select <name>" with `names`), for screen readers
+  and tests.

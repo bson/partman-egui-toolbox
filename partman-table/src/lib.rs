@@ -10,6 +10,8 @@
 //! clicked and where it's scrolled are kept in egui's memory, under the
 //! table's id, so they hold across the app's steps and its runs: rows are
 //! known by keys the app gives, which have to stay the same for a row.
+//! A table that's a page of a longer list has the app sort it and keep its
+//! selection, across its pages.
 
 use std::collections::BTreeSet;
 use std::hash::Hash;
@@ -38,6 +40,9 @@ pub enum SortBy {
     /// Text, compared without case
     Text(Vec<String>),
     Number(Vec<f64>),
+    /// By the app, which is told the column and direction (`Shown::sorted`)
+    /// and gives the rows in that order: a page of a list sorted whole
+    App,
 }
 
 /// A column: its header, how wide it starts and can be made, and what
@@ -83,6 +88,7 @@ fn order(cols: &[Col], n: usize, sorted: Option<&(String, bool)>) -> Vec<usize> 
     match by {
         SortBy::Text(v) if v.len() == n => at.sort_by_key(|&i| v[i].to_lowercase()),
         SortBy::Number(v) if v.len() == n => at.sort_by(|&a, &b| v[a].total_cmp(&v[b])),
+        // Text or numbers of another count than the rows, or the app's
         _ => return at,
     }
     if !up {
@@ -112,6 +118,11 @@ pub struct Table<'a> {
     row_height: Option<f32>,
     reload: bool,
     widths: Option<&'a mut Vec<f32>>,
+    heights: Option<&'a [f32]>,
+    selection: Option<&'a mut BTreeSet<String>>,
+    sorted: Option<(String, bool)>,
+    click_opens: bool,
+    names: Option<&'a [String]>,
 }
 
 /// What came of showing it.
@@ -123,12 +134,32 @@ pub struct Shown {
     pub reload: bool,
     /// The user changed the widths given by `widths`, for the app to keep
     pub resized: bool,
+    /// The column sorted on, by title, and whether ascending
+    pub sorted: Option<(String, bool)>,
+    /// With `click_opens`, the row a plain click was on, by its place in
+    /// keys as given
+    pub opened: Option<usize>,
 }
 
 impl<'a> Table<'a> {
     /// A table under id, whose rows are known by keys, in the order shown.
     pub fn new(id: impl Hash + std::fmt::Debug, keys: &'a [String]) -> Table<'a> {
-        Table { id: Id::new(id), keys, cols: vec![], select: Select::None, max_height: 300.0, scroll: true, row_height: None, reload: false, widths: None }
+        Table {
+            id: Id::new(id),
+            keys,
+            cols: vec![],
+            select: Select::None,
+            max_height: 300.0,
+            scroll: true,
+            row_height: None,
+            reload: false,
+            widths: None,
+            heights: None,
+            selection: None,
+            sorted: None,
+            click_opens: false,
+            names: None,
+        }
     }
 
     pub fn select(mut self, select: Select) -> Table<'a> {
@@ -169,6 +200,43 @@ impl<'a> Table<'a> {
         self
     }
 
+    /// Each row's height, by its place in keys as given, for rows of
+    /// differing height (text wrapped); those not given are `row_height`'s.
+    pub fn row_heights(mut self, heights: &'a [f32]) -> Table<'a> {
+        self.heights = Some(heights);
+        self
+    }
+
+    /// The selection, kept by the app rather than the table: for a page
+    /// of a longer list, whose rows on other pages stay selected. Select
+    /// all is then this page's rows, and `Shown::selected` every one.
+    pub fn selection(mut self, selected: &'a mut BTreeSet<String>) -> Table<'a> {
+        self.selection = Some(selected);
+        self
+    }
+
+    /// The column sorted on (by title, and whether ascending) until the
+    /// user picks one.
+    pub fn sorted(mut self, title: impl Into<String>, ascending: bool) -> Table<'a> {
+        self.sorted = Some((title.into(), ascending));
+        self
+    }
+
+    /// A plain click on a row opens it (`Shown::opened`) rather than
+    /// selecting it; Ctrl (Command) and Shift still select, as do the
+    /// selection controls. For a list whose rows are opened to be seen.
+    pub fn click_opens(mut self) -> Table<'a> {
+        self.click_opens = true;
+        self
+    }
+
+    /// What each row is, by its place in keys as given, for its selection
+    /// control's name ("Select C1"): "Select row N" without.
+    pub fn names(mut self, names: &'a [String]) -> Table<'a> {
+        self.names = Some(names);
+        self
+    }
+
     /// A reload button among the actions below.
     pub fn reload(mut self) -> Table<'a> {
         self.reload = true;
@@ -198,9 +266,14 @@ impl<'a> Table<'a> {
 
     fn draw(mut self, ui: &mut Ui, mut row: impl FnMut(&mut TableRow<'_, '_>, usize), actions: impl FnOnce(&mut Ui, &[String]), agents: Option<&mut dyn FnMut(&mut Ui, &[String])>) -> Shown {
         let mut state = ui.data_mut(|d| d.get_persisted::<State>(self.id)).unwrap_or_default();
-        // Rows gone are no longer selected; with none at all, they may be
-        // loading still, so what's kept is let be
-        if !self.keys.is_empty() {
+        if state.sorted.is_none() {
+            state.sorted = self.sorted.take();
+        }
+        if let Some(kept) = self.selection.as_deref() {
+            state.selected = kept.clone();
+        } else if !self.keys.is_empty() {
+            // Rows gone are no longer selected; with none at all, they may
+            // be loading still, so what's kept is let be
             state.selected.retain(|k| self.keys.contains(k));
         }
         let h = self.row_height.unwrap_or(row_height(ui) + 6.0);
@@ -208,7 +281,8 @@ impl<'a> Table<'a> {
         let shown_at = order(&self.cols, self.keys.len(), state.sorted.as_ref());
         let shown_keys: Vec<String> = shown_at.iter().map(|&i| self.keys[i].clone()).collect();
         let mut sort_click: Option<String> = None;
-        let mut clicked: Option<(usize, Modifiers)> = None;
+        // The row shown, the modifiers, and whether on its selection control
+        let mut clicked: Option<(usize, Modifiers, bool)> = None;
         let mut all = None;
 
         blank_row(ui);
@@ -311,20 +385,27 @@ impl<'a> Table<'a> {
                     resized = true;
                 }
             }
-            for (shown, key) in shown_keys.iter().enumerate() {
+            // Only the rows in sight are drawn
+            let heights = shown_at.iter().map(|&i| self.heights.and_then(|hs| hs.get(i).copied()).unwrap_or(h));
+            body.heterogeneous_rows(heights, |mut r| {
+                let shown = r.index();
                 let i = shown_at[shown];
-                let on = state.selected.contains(key);
-                body.row(h, |mut r| {
+                let on = state.selected.contains(&shown_keys[shown]);
+                {
                     r.set_selected(on);
                     let mut took = false;
                     if self.select != Select::None {
                         r.col(|ui| {
                             let resp = if self.select == Select::Many { ui.checkbox(&mut on.clone(), "") } else { ui.radio(on, "") };
                             let kind = if self.select == Select::Many { WidgetType::Checkbox } else { WidgetType::RadioButton };
-                            resp.widget_info(|| WidgetInfo::selected(kind, true, on, format!("Select row {}", shown + 1)));
+                            let name = match self.names.and_then(|n| n.get(i)) {
+                                Some(n) => format!("Select {n}"),
+                                None => format!("Select row {}", shown + 1),
+                            };
+                            resp.widget_info(|| WidgetInfo::selected(kind, true, on, name.clone()));
                             if resp.clicked() {
                                 took = true;
-                                clicked = Some((shown, ui.input(|inp| inp.modifiers)));
+                                clicked = Some((shown, ui.input(|inp| inp.modifiers), true));
                             }
                         });
                     }
@@ -333,19 +414,31 @@ impl<'a> Table<'a> {
                     // in it has taken its own
                     let resp = r.response();
                     if !took && resp.clicked() {
-                        clicked = Some((shown, resp.ctx.input(|inp| inp.modifiers)));
+                        clicked = Some((shown, resp.ctx.input(|inp| inp.modifiers), false));
                     }
-                });
-            }
+                }
+            });
         });
         // Its rows' area, for scrolling over it to go by its height
         partman_scroll::area(ui.ctx(), &rows);
 
+        // Only this page's rows; others kept by the app stay as they are
         if let Some(on) = all {
-            state.selected = if on { self.keys.iter().cloned().collect() } else { BTreeSet::new() };
+            for k in self.keys {
+                if on {
+                    state.selected.insert(k.clone());
+                } else {
+                    state.selected.remove(k);
+                }
+            }
         }
-        if let Some((shown, mods)) = clicked {
-            click(&mut state, &shown_keys, shown, mods, self.select);
+        let mut opened = None;
+        if let Some((shown, mods, control)) = clicked {
+            if self.click_opens && !control && !mods.shift && !mods.command {
+                opened = Some(shown_at[shown]);
+            } else {
+                click(&mut state, &shown_keys, shown, mods, self.select);
+            }
         }
         if let Some(t) = sort_click {
             state.sorted = match state.sorted.take() {
@@ -353,7 +446,11 @@ impl<'a> Table<'a> {
                 _ => Some((t, true)),
             };
         }
-        let selected: Vec<String> = shown_keys.iter().filter(|k| state.selected.contains(*k)).cloned().collect();
+        let mut selected: Vec<String> = shown_keys.iter().filter(|k| state.selected.contains(*k)).cloned().collect();
+        if let Some(kept) = self.selection.as_deref_mut() {
+            *kept = state.selected.clone();
+            selected.extend(kept.iter().filter(|k| !self.keys.contains(k)).cloned());
+        }
         let mut reload = false;
         ui.horizontal_wrapped(|ui| {
             actions(ui, &selected);
@@ -365,8 +462,9 @@ impl<'a> Table<'a> {
             ui.horizontal_wrapped(|ui| agents(ui, &selected));
         }
         blank_row(ui);
+        let sorted = state.sorted.clone();
         ui.data_mut(|d| d.insert_persisted(self.id, state));
-        Shown { selected, reload, resized }
+        Shown { selected, reload, resized, sorted, opened }
     }
 }
 
@@ -606,6 +704,87 @@ mod tests {
         h.run();
         let [a, b, c] = tops(&h);
         assert!(b < a && a < c, "by size");
+    }
+
+    /// A page of a longer list: the app sorts it, told by the header
+    /// clicks, its rows staying as given; it keeps the selection, rows on
+    /// other pages and all, select all being this page's; a plain click
+    /// opens a row, Ctrl and Shift select; rows have their own heights.
+    #[test]
+    fn a_page_the_app_sorts_and_selects() {
+        struct P {
+            keys: Vec<String>,
+            selection: BTreeSet<String>,
+            sorted: Option<(String, bool)>,
+            opened: Option<usize>,
+        }
+        let p = P { keys: ["b", "c", "a"].map(String::from).to_vec(), selection: BTreeSet::from(["z".to_string()]), sorted: None, opened: None };
+        let heights = [22.0, 60.0, 22.0];
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(600.0, 400.0)).build_ui_state(
+            move |ui, p: &mut P| {
+                let keys = p.keys.clone();
+                let shown = Table::new("page", &keys)
+                    .select(Select::Many)
+                    .selection(&mut p.selection)
+                    .sorted("Name", true)
+                    .click_opens()
+                    .row_heights(&heights)
+                    .names(&keys)
+                    .column(Col::new("Name").sort(SortBy::App))
+                    .column(Col::new("Other"))
+                    .show(
+                        ui,
+                        |r, i| {
+                            r.col(|ui| {
+                                ui.label(format!("row {}", keys[i]));
+                            });
+                            r.col(|ui| {
+                                ui.label("-");
+                            });
+                        },
+                        |_, _| {},
+                    );
+                p.sorted = shown.sorted;
+                if shown.opened.is_some() {
+                    p.opened = shown.opened;
+                }
+            },
+            p,
+        );
+        h.run();
+        assert_eq!(h.state().sorted, Some(("Name".into(), true)), "the app's to start with");
+        let tops = |h: &egui_kittest::Harness<'_, P>| ["b", "c", "a"].map(|k| h.get_by_label(&format!("row {k}")).rect().top());
+        let [b, c, a] = tops(&h);
+        assert!(b < c && c < a, "as given");
+        // Centred in their rows, labels are half of one row and half of the
+        // next apart: rows of 22 would be about 25
+        assert!(c - b > 40.0 && a - c > 40.0, "c's row its own height: {b} {c} {a}");
+        h.get_by_label("Sort by Name").click();
+        h.run();
+        assert_eq!(h.state().sorted, Some(("Name".into(), false)), "told the other way");
+        let [b2, c2, a2] = tops(&h);
+        assert_eq!([b, c, a], [b2, c2, a2], "not sorted by the table");
+        // A plain click opens, Ctrl selects, Shift selects a range
+        h.get_by_label("row c").click();
+        h.run();
+        assert_eq!(h.state().opened, Some(1));
+        assert_eq!(h.state().selection, BTreeSet::from(["z".to_string()]));
+        h.get_by_label("row b").click_modifiers(Modifiers::COMMAND);
+        h.run();
+        h.get_by_label("row a").click_modifiers(Modifiers::SHIFT);
+        h.run();
+        assert_eq!(h.state().selection.len(), 4, "b to a, and z from another page: {:?}", h.state().selection);
+        // All on the page, and only it, selected: none of it, z kept
+        h.get_by_label("Select all").click();
+        h.run();
+        assert_eq!(h.state().selection, BTreeSet::from(["z".to_string()]));
+        h.get_by_label("Select all").click();
+        h.run();
+        assert_eq!(h.state().selection.len(), 4);
+        // Named for what they are
+        h.get_by_label("Select c").click();
+        h.run();
+        assert!(!h.state().selection.contains("c"));
     }
 
     /// Kept while the rows are loading again, and those gone let go.
