@@ -325,6 +325,14 @@ Separate non-agentic and agentic action buttons below a table so
 that they're on separate lines since their sizes differ.  First the
 regular action buttons, then the agentic ones.
 
+Sort order, if changeable, is set by clicking on the column header to
+sort on.  An arrow is included in the right part of the column header
+to visualize which one is sorted on and in which order (ascending,
+descending).
+
+If there are no actions to perform on selected rows, then no selection
+checkboxes are included in the table and there is no checkbox column.
+
 ### Buttons
 
 A delete button is always a wastebasket.
