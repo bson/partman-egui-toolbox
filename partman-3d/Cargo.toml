@@ -1,0 +1,15 @@
+[package]
+name = "partman-3d"
+description = "A 3D scene drawn by the GPU in an egui canvas, turned about by dragging, with the app's own wgpu device"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+egui.workspace = true
+egui-wgpu = { version = "0.36", default-features = false }
+
+[dev-dependencies]
+egui_kittest = { workspace = true, features = ["wgpu"] }

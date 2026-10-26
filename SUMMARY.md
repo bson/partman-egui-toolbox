@@ -4,6 +4,8 @@ A Cargo workspace (`Cargo.toml`), one crate per component, sharing the
 egui version and the package metadata through `[workspace.package]` and
 `[workspace.dependencies]`. Each crate has its own README and SUMMARY:
 
+- `partman-3d/`: a 3D scene drawn by the GPU, with the app's wgpu device,
+  first used by Partman's 3D model card.
 - `partman-card/`: the board of cards. It was the egui-cards repository,
   moved here with its history.
 - `partman-scroll/`: adaptive scroll speed and momentum, for every

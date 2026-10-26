@@ -15,6 +15,7 @@ starts as a change to it.
 
 | Crate | What it is |
 | --- | --- |
+| [partman-3d](partman-3d/README.md) | A 3D scene drawn by the GPU in a canvas, turned about by dragging, as a part's model on its board. |
 | [partman-card](partman-card/README.md) | A board of cards: tabbed cards in stacks the user moves, resizes and rearranges, the layout kept between runs. |
 | [partman-scroll](partman-scroll/README.md) | Scrolling: a notch moves a similar share of any area, however tall, and a trackpad swipe let go of carries on, slowing down. |
 | [partman-sidebar](partman-sidebar/README.md) | A sidebar, such as an agent's: a triangle on the work area's edge slides it open and shut, and it keeps the width the user drags it to. |
@@ -28,6 +29,7 @@ Each is a crate of its own in this repository, added as a git dependency
 pinned to a commit:
 
 ```toml
+partman-3d = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
 partman-card = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
 partman-scroll = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
 partman-sidebar = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
