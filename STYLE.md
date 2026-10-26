@@ -306,7 +306,10 @@ from other elements with a blank row (see blank rows, above).
 If a table is scrollable, only the data rows should form a scrollable
 element.  The header and action buttons below should not scroll with
 the table.  (They would of course still scroll with the entire window,
-card, dialog or work area.)
+card, dialog or work area.)  A table should always be large enough to
+show at least 5 items before it becomes scrollable; this plus its
+column titles and any action buttons below can be considered its
+minimum size.
 
 Action buttons are never placed on a data row.
 
