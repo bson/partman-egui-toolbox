@@ -133,13 +133,13 @@ fn centred(lo: f32, hi: f32, view: f32, content: f32) -> f32 {
 }
 
 /// A double caret over the top (`up`) or bottom of the rows' view, for
-/// selected rows out of sight that way: footnote sized, on a pill of the
-/// panel's colour so it reads over the rows.
-fn out_of_view(ui: &mut Ui, view: egui::Rect, up: bool, id: Id) {
+/// selected rows out of sight that way, centred on `x`: footnote
+/// sized, on a pill of the panel's colour so it reads over the rows.
+fn out_of_view(ui: &mut Ui, view: egui::Rect, x: f32, up: bool, id: Id) {
     let s = ui.style().text_styles.get(&egui::TextStyle::Small).map_or(9.0, |f| f.size);
     let pill = egui::Vec2::new(s * 2.0, s * 1.3);
     let y = if up { view.top() + 2.0 + pill.y / 2.0 } else { view.bottom() - 2.0 - pill.y / 2.0 };
-    let rect = egui::Rect::from_center_size(egui::pos2(view.center().x, y), pill);
+    let rect = egui::Rect::from_center_size(egui::pos2(x, y), pill);
     let name = if up { "Selected rows above" } else { "Selected rows below" };
     let r = ui.interact(rect, id.with(name), Sense::hover()).on_hover_text(format!("{name}: scroll to see them"));
     r.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, name));
@@ -384,13 +384,14 @@ impl<'a> Table<'a> {
         }
         let first = usize::from(self.select != Select::None);
         let mut resized = false;
+        let mut select_width = h;
         let every = !self.keys.is_empty() && self.keys.iter().all(|k| state.selected.contains(k));
         let rows = b.header(h, |mut head| {
             if self.select != Select::None {
                 head.col(|ui| {
                     if self.select == Select::Many && !self.keys.is_empty() {
                         let mut on = every;
-                        let r = ui.checkbox(&mut on, "");
+                        let r = ui.checkbox(&mut on, "").on_hover_text(if every { "Select none" } else { "Select all" });
                         r.widget_info(|| WidgetInfo::selected(WidgetType::Checkbox, true, every, "Select all"));
                         if r.clicked() {
                             all = Some(!every);
@@ -426,6 +427,7 @@ impl<'a> Table<'a> {
         .body(|mut body| {
             // Text left selectable would take the click meant for the row
             body.ui_mut().style_mut().interaction.selectable_labels = false;
+            select_width = body.widths().first().copied().unwrap_or(h);
             // A selected row's text is drawn in the selection's stroke
             // colour, which some themes have close to its fill: the strong
             // text colour reads on it
@@ -458,6 +460,13 @@ impl<'a> Table<'a> {
                     if self.select != Select::None {
                         r.col(|ui| {
                             let resp = if self.select == Select::Many { ui.checkbox(&mut on.clone(), "") } else { ui.radio(on, "") };
+                            // What a click does: a radio button on is already the one
+                            let tip = match (self.select, on) {
+                                (Select::Many, true) => "Deselect",
+                                (Select::One, true) => "Selected",
+                                _ => "Select",
+                            };
+                            let resp = resp.on_hover_text(tip);
                             let kind = if self.select == Select::Many { WidgetType::Checkbox } else { WidgetType::RadioButton };
                             let name = match self.names.and_then(|n| n.get(i)) {
                                 Some(n) => format!("Select {n}"),
@@ -523,11 +532,14 @@ impl<'a> Table<'a> {
         // Marks for selected rows wholly out of view; on a pass to be
         // discarded they'd be for where it's no longer scrolled
         if self.scroll && target.is_none() {
+            // Over the selection controls, which they're about; there are
+            // none to be out of view without that column
+            let x = rows.inner_rect.left() + select_width / 2.0;
             if picked.iter().any(|&s| spans[s].1 <= at + 0.5) {
-                out_of_view(ui, rows.inner_rect, true, self.id);
+                out_of_view(ui, rows.inner_rect, x, true, self.id);
             }
             if picked.iter().any(|&s| spans[s].0 >= at + size.y - 0.5) {
-                out_of_view(ui, rows.inner_rect, false, self.id);
+                out_of_view(ui, rows.inner_rect, x, false, self.id);
             }
         }
 
@@ -995,6 +1007,30 @@ mod tests {
         h.run();
         assert!(place(&h, "r20").is_some() && place(&h, "r22").is_none(), "r22 off the bottom");
         assert!(h.query_by_label("Selected rows below").is_some());
+    }
+
+    /// Hovered, the selection controls say what a click on them does.
+    #[test]
+    fn controls_say_what_they_do() {
+        let mut h = harness(Select::Many);
+        h.run();
+        let tip = |h: &mut egui_kittest::Harness<'_, S>, over: &str, says: &str| {
+            let at = h.get_by_label(over).rect().center();
+            h.hover_at(at);
+            h.run_steps(60);
+            // The header's tip has its own name, so is found beside it
+            let want = if says == over { 2 } else { 1 };
+            assert_eq!(h.query_all_by_label(says).count(), want, "{over} says {says}");
+            // Away, for the next to be found alone
+            h.hover_at(egui::pos2(590.0, 390.0));
+            h.run_steps(60);
+        };
+        tip(&mut h, "Select row 2", "Select");
+        click(&mut h, "row b", Modifiers::NONE);
+        tip(&mut h, "Select row 2", "Deselect");
+        tip(&mut h, "Select all", "Select all");
+        click(&mut h, "Select all", Modifiers::NONE);
+        tip(&mut h, "Select all", "Select none");
     }
 
     /// Kept while the rows are loading again, and those gone let go.

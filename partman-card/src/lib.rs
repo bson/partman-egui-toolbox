@@ -557,7 +557,7 @@ pub fn board(ui: &mut Ui, t: &Colors, layout: &mut Layout, cards: &[Card], defau
             if target == Some(i) {
                 painter.rect_filled(bar, CornerRadius { nw: 6, ne: 6, sw: 0, se: 0 }, t.accent.gamma_multiply(0.25));
             }
-            let b = ui.interact(bar, id.with("bar"), Sense::drag()).on_hover_cursor(CursorIcon::Grab);
+            let b = ui.interact(bar, id.with("bar"), Sense::drag()).on_hover_cursor(CursorIcon::Grab).on_hover_text("Drag to move these cards");
             if b.drag_started() {
                 let grab = press.map_or(Vec2::ZERO, |p| on_board(p) - s.rect().min);
                 start = Some((i, Drag::Move { stack: i, grab, card: false }));
@@ -567,7 +567,8 @@ pub fn board(ui: &mut Ui, t: &Colors, layout: &mut Layout, cards: &[Card], defau
             for (k, &tr) in s.cards.iter().zip(&trs) {
                 let title = cards.iter().find(|c| c.key == k).map_or("", |c| c.title);
                 let on = *k == s.top;
-                let tab = ui.interact(tr, id.with(("tab", k)), Sense::click_and_drag());
+                let tip = if on { "Drag sideways to reorder, or up or down to take this card off" } else { "Show this card; drag sideways to reorder, or up or down to take it off" };
+                let tab = ui.interact(tr, id.with(("tab", k)), Sense::click_and_drag()).on_hover_text(tip);
                 tab.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, on, title));
                 if on {
                     painter.rect_filled(tr, CornerRadius { nw: 5, ne: 5, sw: 0, se: 0 }, body_fill);
@@ -630,7 +631,7 @@ pub fn board(ui: &mut Ui, t: &Colors, layout: &mut Layout, cards: &[Card], defau
                 painter.rect_stroke(r, 6, Stroke::new(2.0, t.accent), StrokeKind::Inside);
             }
             let grip = Rect::from_min_max(r.max - vec2(GRIP, GRIP), r.max);
-            let g = ui.interact(grip, id.with("grip"), Sense::drag()).on_hover_cursor(CursorIcon::ResizeNwSe);
+            let g = ui.interact(grip, id.with("grip"), Sense::drag()).on_hover_cursor(CursorIcon::ResizeNwSe).on_hover_text("Drag to resize these cards");
             for n in 1..=3 {
                 let d = n as f32 * 3.5;
                 painter.line_segment([pos2(r.max.x - d - 2.0, r.max.y - 2.0), pos2(r.max.x - 2.0, r.max.y - d - 2.0)], Stroke::new(1.0, t.text_dim));

@@ -1,0 +1,20 @@
+[package]
+name = "partman-proof"
+description = "A proof sheet for the toolbox: its tables, buttons and text on a board of cards, to see how they look and behave without an app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+egui.workspace = true
+eframe = { version = "0.36", default-features = false, features = ["wgpu", "wayland", "x11", "default_fonts", "persistence"] }
+partman-card = { path = "../partman-card" }
+partman-scroll = { path = "../partman-scroll" }
+partman-table = { path = "../partman-table" }
+partman-widgets = { path = "../partman-widgets" }
+
+[dev-dependencies]
+egui_kittest = { workspace = true, features = ["wgpu"] }

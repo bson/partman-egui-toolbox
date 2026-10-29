@@ -53,6 +53,9 @@ before the toolbox held it.
 
 ## Behaviour worth knowing
 
+- **Hover texts:** a stack's bar, its tabs (the one shown, and the
+  others), its resize grip and its close mark each say what they do.
+
 - **Scrolling**: the board and each card's body are reported to
   `partman-scroll`, so a notch over either moves a share of its size.
 - **Fitted layouts** are laid out by `fit`: stacks one under another

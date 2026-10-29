@@ -17,6 +17,7 @@ starts as a change to it.
 | --- | --- |
 | [partman-3d](partman-3d/README.md) | A 3D scene drawn by the GPU in a canvas, turned about by dragging, as a part's model on its board. |
 | [partman-card](partman-card/README.md) | A board of cards: tabbed cards in stacks the user moves, resizes and rearranges, the layout kept between runs. |
+| [partman-proof](partman-proof/README.md) | A proof sheet: a small program showing the components on a board of cards, to see how they look and behave without an app (`cargo run -p partman-proof`). |
 | [partman-scroll](partman-scroll/README.md) | Scrolling: a notch moves a similar share of any area, however tall, and a trackpad swipe let go of carries on, slowing down. |
 | [partman-sidebar](partman-sidebar/README.md) | A sidebar, such as an agent's: a triangle on the work area's edge slides it open and shut, and it keeps the width the user drags it to. |
 | [partman-table](partman-table/README.md) | Tables: headed, adjustable columns, rows selected by checkbox, radio button or click, actions on the selection below, and the selection and scroll kept between runs. |
@@ -54,6 +55,12 @@ partman-workflow = { path = "../partman-egui-toolbox/partman-workflow" }
 
 ```sh
 cargo test
+```
+
+To see the components without an app:
+
+```sh
+cargo run -p partman-proof
 ```
 
 ## License

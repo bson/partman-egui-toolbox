@@ -169,7 +169,8 @@ fn resize(ui: &mut Ui, id: Id, side: Side, area: Rect, edge: f32, width: &mut Op
         .fixed_pos(grip.min)
         .show(ui.ctx(), |ui| ui.allocate_exact_size(grip.size(), Sense::drag()).1)
         .inner
-        .on_hover_cursor(CursorIcon::ResizeHorizontal);
+        .on_hover_cursor(CursorIcon::ResizeHorizontal)
+        .on_hover_text("Drag to make it wider or narrower");
     let key = id.with("resizing");
     if r.drag_started() {
         ui.data_mut(|d| d.insert_temp(key, Resizing { from: *width, cancelled: false }));

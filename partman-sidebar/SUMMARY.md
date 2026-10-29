@@ -26,7 +26,7 @@ user.
   `MIN_WIDTH` and at most the work area's width, measured each frame, so
   a smaller window shrinks it without changing what's kept.
 - **Resizing** works only while fully open, by a grip 3 points either
-  side of the inner edge. The grip, like the control, is in an `Area` on
+  side of the inner edge, which says so on a hover. The grip, like the control, is in an `Area` on
   the foreground layer: on the background layer, widgets the work area
   draws later along the edge (a scroll area) took the press. A drag
   keeps the width it started from in egui's temporary data; Escape puts

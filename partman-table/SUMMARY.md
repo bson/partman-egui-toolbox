@@ -58,7 +58,9 @@ and uses partman-widgets for blank rows and the reload button.
   offset is decided after the rows are drawn, so the pass is discarded
   (`request_discard`) and the next starts there (`vertical_scroll_offset`).
 - **Out of view marks** (`out_of_view`): a double caret, footnote sized,
-  on a pill of the panel's colour at the view's top or bottom edge, for
+  on a pill of the panel's colour at the view's top or bottom edge,
+  centred on the selection column (by the column widths the body
+  gives), for
   selected rows wholly out of sight that way; "Selected rows above" /
   "below" for screen readers and tests. Not drawn on a pass to be
   discarded.
@@ -113,3 +115,7 @@ and uses partman-widgets for blank rows and the reload button.
 - **Names:** the header checkbox is "Select all", each row's control
   "Select row N" (or "Select <name>" with `names`), for screen readers
   and tests.
+- **Hover texts** say what a click does now: the header checkbox "Select
+  all", or "Select none" with every row selected; a row's checkbox
+  "Select" or "Deselect"; a radio button "Select", or "Selected" when
+  it's the one.

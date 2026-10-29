@@ -347,6 +347,9 @@ first of them stays in view and the others fall off the bottom.
 pointing up, footnote sized, is overlaid at the top of the visible
 rows; if below, one pointing down at their bottom.
 
+`[tables.out-of-view-place]` The double carets are centered on the selection column, over the
+checkboxes or radio buttons of the rows they point to.
+
 `[tables.agent-buttons]` Separate non-agentic and agentic action buttons below a table so
 that they're on separate lines since their sizes differ.  First the
 regular action buttons, then the agentic ones.
