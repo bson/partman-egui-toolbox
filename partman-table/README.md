@@ -21,8 +21,8 @@ style and design guide, [STYLE.md](../STYLE.md), has them:
 - **Pages of a longer list:** the app can sort the rows itself (on a
   server, across pages), told which header was clicked, and keep the
   selection, so rows on other pages stay selected; select all is the
-  page's. Rows can be of differing heights (text wrapped), and only those
-  in sight are drawn. A list whose rows are opened to be seen can have a
+  page's. Rows can be of differing heights (text wrapped), and a table
+  that scrolls draws only those in sight. A list whose rows are opened to be seen can have a
   plain click open a row, Ctrl and Shift still selecting.
 - **No selection without actions:** a table with nothing to do on
   selected rows is made without selection, and has no checkbox column.

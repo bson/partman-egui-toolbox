@@ -449,8 +449,7 @@ impl<'a> Table<'a> {
                     resized = true;
                 }
             }
-            // Only the rows in sight are drawn
-            body.heterogeneous_rows(heights.iter().copied(), |mut r| {
+            let mut draw = |mut r: TableRow<'_, '_>| {
                 let shown = r.index();
                 let i = shown_at[shown];
                 let on = state.selected.contains(&shown_keys[shown]);
@@ -487,7 +486,19 @@ impl<'a> Table<'a> {
                         clicked = Some((shown, resp.ctx.input(|inp| inp.modifiers), false));
                     }
                 }
-            });
+            };
+            if self.scroll {
+                // Only the rows in sight are drawn
+                body.heterogeneous_rows(heights.iter().copied(), draw);
+            } else {
+                // Every row: those egui_extras leaves out are out of sight
+                // of a view that scrolls the table, which counts them as it
+                // scrolls, so a card's content grew and shrank under the
+                // wheel and kept jumping back
+                for &hh in &heights {
+                    body.row(hh, &mut draw);
+                }
+            }
         });
         // Its rows' area, for scrolling over it to go by its height
         partman_scroll::area(ui.ctx(), &rows);
@@ -1034,6 +1045,47 @@ mod tests {
     }
 
     /// Kept while the rows are loading again, and those gone let go.
+    /// Tables that don't scroll, in a view that does (a card's), scroll
+    /// with it smoothly to its end: their rows out of sight are drawn
+    /// too, so what the view has to show doesn't change as it scrolls.
+    #[test]
+    fn unscrolled_tables_scroll_with_their_view() {
+        let keys: Vec<String> = (0..10).map(|i| i.to_string()).collect();
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(400.0, 300.0)).build_ui(move |ui| {
+            egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+                for t in 0..4 {
+                    Table::new(("prices", t), &keys).scroll(false).column(Col::new("Quantity").width(100.0)).column(Col::new("Each")).show(
+                        ui,
+                        |r, i| {
+                            r.col(|ui| {
+                                ui.label(format!("{t}.{i}"));
+                            });
+                            r.col(|ui| {
+                                ui.label("1.00");
+                            });
+                        },
+                        |_, _| {},
+                    );
+                }
+                ui.label("The end");
+            });
+        });
+        h.run();
+        h.hover_at(egui::pos2(200.0, 150.0));
+        h.run();
+        let end = |h: &egui_kittest::Harness<'_>| h.get_by_label("The end").rect().top();
+        let mut last = end(&h);
+        for _ in 0..40 {
+            h.event(egui::Event::MouseWheel { unit: egui::MouseWheelUnit::Line, delta: egui::vec2(0.0, -3.0), modifiers: Modifiers::NONE, phase: egui::TouchPhase::Move });
+            h.step();
+            let now = end(&h);
+            assert!(now <= last + 0.5, "jumped back, from {last} to {now}");
+            last = now;
+        }
+        h.run();
+        assert!(end(&h) < 300.0, "the end not reached: {}", end(&h));
+    }
+
     #[test]
     fn kept_by_key() {
         let mut h = harness(Select::Many);

@@ -93,9 +93,14 @@ and uses partman-widgets for blank rows and the reload button.
 - **App sorting:** `SortBy::App` leaves the rows as given; the header
   click and arrow are as for the others, and `Shown::sorted` says which.
   `sorted` starts the table's kept sort, the user's taking over from it.
-- **Rows** are drawn with egui_extras' `heterogeneous_rows`, so only
-  those in sight are laid out; their heights are `row_heights` by the
-  rows' place as given, else `row_height`.
+- **Rows** of a table that scrolls are drawn with egui_extras'
+  `heterogeneous_rows`, so only those in sight are laid out; one that
+  doesn't (`scroll(false)`) draws every row (`body.row`), as what's out
+  of sight is the view around it's, which egui_extras counts as that
+  scrolls: a card of such tables grew and shrank under the wheel, and
+  kept jumping back (`unscrolled_tables_scroll_with_their_view`). Their
+  heights are `row_heights` by the rows' place as given, else
+  `row_height`.
 - **Click opens:** a plain click on an inert part of a row opens it; with
   Ctrl or Shift, or on the selection control, it selects as below.
 - **Clicks:** the table senses clicks on rows; a widget in a cell takes
