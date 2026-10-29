@@ -107,6 +107,54 @@ struct State {
     sorted: Option<(String, bool)>,
 }
 
+/// The rows' view as it was at the end of the last frame it was drawn, for
+/// telling a table just shown, a selection made by the app, and a resize,
+/// each of which scrolls to the selection. Not kept between runs.
+#[derive(Clone, Debug, Default)]
+struct View {
+    frame: u64,
+    had_rows: bool,
+    size: egui::Vec2,
+    /// Any row shown was selected
+    picked: bool,
+    /// The selected rows in view, by key
+    in_view: Vec<String>,
+    /// Where to scroll to, decided after the rows were drawn: the next
+    /// pass, or frame, starts there
+    pending: Option<f32>,
+}
+
+/// The scroll offset that centres the rows from `lo` to `hi` (in the rows'
+/// own coordinates) in a view `view` high, or puts `lo` at its top when
+/// they're taller, within what can be scrolled to.
+fn centred(lo: f32, hi: f32, view: f32, content: f32) -> f32 {
+    let y = if hi - lo > view { lo } else { (lo + hi - view) / 2.0 };
+    y.clamp(0.0, (content - view).max(0.0))
+}
+
+/// A double caret over the top (`up`) or bottom of the rows' view, for
+/// selected rows out of sight that way: footnote sized, on a pill of the
+/// panel's colour so it reads over the rows.
+fn out_of_view(ui: &mut Ui, view: egui::Rect, up: bool, id: Id) {
+    let s = ui.style().text_styles.get(&egui::TextStyle::Small).map_or(9.0, |f| f.size);
+    let pill = egui::Vec2::new(s * 2.0, s * 1.3);
+    let y = if up { view.top() + 2.0 + pill.y / 2.0 } else { view.bottom() - 2.0 - pill.y / 2.0 };
+    let rect = egui::Rect::from_center_size(egui::pos2(view.center().x, y), pill);
+    let name = if up { "Selected rows above" } else { "Selected rows below" };
+    let r = ui.interact(rect, id.with(name), Sense::hover()).on_hover_text(format!("{name}: scroll to see them"));
+    r.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, name));
+    let painter = ui.painter().with_clip_rect(view);
+    painter.rect_filled(rect, pill.y / 2.0, ui.visuals().panel_fill.gamma_multiply(0.9));
+    let stroke = egui::Stroke::new(1.2, ui.visuals().strong_text_color());
+    let (w, rise, step) = (s * 0.4, s * 0.22, s * 0.3);
+    // Pointing up, the tip is at the top; down, at the bottom
+    let tip = if up { -rise } else { rise };
+    for dy in [-step / 2.0, step / 2.0] {
+        let c = rect.center() + egui::vec2(0.0, dy);
+        painter.line(vec![c + egui::vec2(-w, -tip), c + egui::vec2(0.0, tip), c + egui::vec2(w, -tip)], stroke);
+    }
+}
+
 /// A table, drawn by `show`.
 pub struct Table<'a> {
     id: Id,
@@ -280,6 +328,14 @@ impl<'a> Table<'a> {
         // The rows as shown, sorted or not; clicks and ranges go by these
         let shown_at = order(&self.cols, self.keys.len(), state.sorted.as_ref());
         let shown_keys: Vec<String> = shown_at.iter().map(|&i| self.keys[i].clone()).collect();
+        let heights: Vec<f32> = shown_at.iter().map(|&i| self.heights.and_then(|hs| hs.get(i).copied()).unwrap_or(h)).collect();
+        let view_id = self.id.with("view");
+        let frame = ui.ctx().cumulative_frame_nr();
+        let was: View = ui.data(|d| d.get_temp(view_id)).unwrap_or_default();
+        // Drawn the frame before, or earlier in this one (a pass discarded),
+        // with rows: one shown anew, or whose rows came, is first shown
+        let continuing = was.had_rows && (was.frame == frame || was.frame + 1 == frame);
+        let pending = was.pending;
         let mut sort_click: Option<String> = None;
         // The row shown, the modifiers, and whether on its selection control
         let mut clicked: Option<(usize, Modifiers, bool)> = None;
@@ -308,8 +364,14 @@ impl<'a> Table<'a> {
             .auto_shrink([false, true])
             .vscroll(self.scroll)
             .max_scroll_height(self.max_height)
+            // egui_extras' least before the rows scroll is 200, which would
+            // take over a smaller most
+            .min_scrolled_height(self.max_height.min(200.0))
             .cell_layout(Layout::left_to_right(egui::Align::Center))
             .sense(Sense::click());
+        if let Some(y) = pending {
+            b = b.vertical_scroll_offset(y);
+        }
         if self.select != Select::None {
             b = b.column(Column::exact(h));
         }
@@ -386,8 +448,7 @@ impl<'a> Table<'a> {
                 }
             }
             // Only the rows in sight are drawn
-            let heights = shown_at.iter().map(|&i| self.heights.and_then(|hs| hs.get(i).copied()).unwrap_or(h));
-            body.heterogeneous_rows(heights, |mut r| {
+            body.heterogeneous_rows(heights.iter().copied(), |mut r| {
                 let shown = r.index();
                 let i = shown_at[shown];
                 let on = state.selected.contains(&shown_keys[shown]);
@@ -421,6 +482,54 @@ impl<'a> Table<'a> {
         });
         // Its rows' area, for scrolling over it to go by its height
         partman_scroll::area(ui.ctx(), &rows);
+
+        // Each row's top and bottom, in the order shown, as egui_extras lays
+        // them out: a row's height and the spacing below it
+        let gap = ui.spacing().item_spacing.y;
+        let mut spans = Vec::with_capacity(heights.len());
+        let mut y = 0.0;
+        for hh in &heights {
+            spans.push((y, y + hh));
+            y += hh + gap;
+        }
+        let (size, offset, content) = (rows.inner_rect.size(), rows.state.offset.y, rows.content_size.y);
+        // As drawn, before this frame's clicks
+        let picked: Vec<usize> = (0..shown_keys.len()).filter(|&s| state.selected.contains(&shown_keys[s])).collect();
+        // A table that doesn't scroll its rows has none of this: the view
+        // it's in scrolls
+        let target = if !self.scroll || picked.is_empty() {
+            None
+        } else if !continuing || !was.picked {
+            // First shown, or selected by the app from nothing: a click in
+            // the table is in what was kept at the end of its frame
+            let (lo, hi) = spans[picked[0]];
+            Some(centred(lo, hi, size.y, content))
+        } else if (size - was.size).length() > 0.5 && !was.in_view.is_empty() {
+            let at: Vec<usize> = (0..shown_keys.len()).filter(|&s| was.in_view.contains(&shown_keys[s])).collect();
+            match (at.first(), at.last()) {
+                (Some(&a), Some(&z)) => Some(centred(spans[a].0, spans[z].1, size.y, content)),
+                _ => None,
+            }
+        } else {
+            None
+        };
+        let target = target.filter(|t| (t - offset).abs() > 0.5);
+        if target.is_some() {
+            // Shown where it was for not even a frame
+            ui.ctx().request_discard("a table scrolled to its selection");
+            ui.ctx().request_repaint();
+        }
+        let at = target.unwrap_or(offset);
+        // Marks for selected rows wholly out of view; on a pass to be
+        // discarded they'd be for where it's no longer scrolled
+        if self.scroll && target.is_none() {
+            if picked.iter().any(|&s| spans[s].1 <= at + 0.5) {
+                out_of_view(ui, rows.inner_rect, true, self.id);
+            }
+            if picked.iter().any(|&s| spans[s].0 >= at + size.y - 0.5) {
+                out_of_view(ui, rows.inner_rect, false, self.id);
+            }
+        }
 
         // Only this page's rows; others kept by the app stay as they are
         if let Some(on) = all {
@@ -462,6 +571,12 @@ impl<'a> Table<'a> {
             ui.horizontal_wrapped(|ui| agents(ui, &selected));
         }
         blank_row(ui);
+        // With this frame's clicks, so a row the user selects isn't taken
+        // for one the app did
+        let selected_at: Vec<usize> = (0..shown_keys.len()).filter(|&s| state.selected.contains(&shown_keys[s])).collect();
+        let in_view = selected_at.iter().filter(|&&s| spans[s].1 > at && spans[s].0 < at + size.y).map(|&s| shown_keys[s].clone()).collect();
+        let view = View { frame, had_rows: !self.keys.is_empty(), size, picked: !selected_at.is_empty(), in_view, pending: target };
+        ui.data_mut(|d| d.insert_temp(view_id, view));
         let sorted = state.sorted.clone();
         ui.data_mut(|d| d.insert_persisted(self.id, state));
         Shown { selected, reload, resized, sorted, opened }
@@ -785,6 +900,101 @@ mod tests {
         h.get_by_label("Select c").click();
         h.run();
         assert!(!h.state().selection.contains("c"));
+    }
+
+    /// Fifty rows, a view of a few, the selection and height the app's.
+    struct L {
+        keys: Vec<String>,
+        selection: BTreeSet<String>,
+        height: f32,
+    }
+
+    fn long(selected: &[&str]) -> egui_kittest::Harness<'static, L> {
+        let l = L { keys: (0..50).map(|i| format!("r{i}")).collect(), selection: selected.iter().map(|s| s.to_string()).collect(), height: 150.0 };
+        egui_kittest::Harness::builder().with_size(egui::vec2(600.0, 600.0)).build_ui_state(
+            |ui, l: &mut L| {
+                let keys = l.keys.clone();
+                Table::new("long", &keys).select(Select::Many).selection(&mut l.selection).max_height(l.height).column(Col::new("Name")).show(
+                    ui,
+                    |r, i| {
+                        r.col(|ui| {
+                            ui.label(format!("row {}", keys[i]));
+                        });
+                    },
+                    |ui, _| {
+                        ui.label("Actions");
+                    },
+                );
+            },
+            l,
+        )
+    }
+
+    /// Where a row is in the rows' view, 0 its top and 1 its bottom; None
+    /// out of sight, as only the rows in sight are drawn.
+    fn place(h: &egui_kittest::Harness<'_, L>, row: &str) -> Option<f32> {
+        // The view is from under the header to the blank row above the actions
+        let top = h.get_by_label("Name").rect().bottom();
+        let bottom = top + h.state().height;
+        let r = h.query_by_label(&format!("row {row}"))?.rect();
+        (r.bottom() > top && r.top() < bottom).then(|| (r.center().y - top) / (bottom - top))
+    }
+
+    fn centre(h: &egui_kittest::Harness<'_, L>, row: &str) {
+        let at = place(h, row);
+        assert!(at.is_some_and(|a| (a - 0.5).abs() < 0.12), "{row} centred: {at:?}");
+    }
+
+    /// First shown, the first selected row is centred, and the selected
+    /// rows below marked.
+    #[test]
+    fn first_shown_centres_the_selection() {
+        let mut h = long(&["r30", "r45"]);
+        h.run();
+        centre(&h, "r30");
+        assert!(h.query_by_label("Selected rows below").is_some() && h.query_by_label("Selected rows above").is_none());
+    }
+
+    /// Selected by the app from nothing, it's scrolled to; added to by the
+    /// app, or clicked by the user, it isn't.
+    #[test]
+    fn selected_by_the_app_from_nothing() {
+        let mut h = long(&[]);
+        h.run();
+        assert!(place(&h, "r0").is_some(), "at the top");
+        h.state_mut().selection.insert("r40".into());
+        h.run();
+        centre(&h, "r40");
+        // Added to: where it was, the new one above marked
+        h.state_mut().selection.insert("r5".into());
+        h.run();
+        centre(&h, "r40");
+        assert!(h.query_by_label("Selected rows above").is_some() && h.query_by_label("Selected rows below").is_none());
+        // Cleared, and a row clicked by the user: not scrolled
+        h.state_mut().selection.clear();
+        h.run();
+        let before = place(&h, "r41").unwrap();
+        h.get_by_label("row r41").click();
+        h.run();
+        assert_eq!(h.state().selection, BTreeSet::from(["r41".to_string()]));
+        assert!((place(&h, "r41").unwrap() - before).abs() < 0.01, "left where it was");
+    }
+
+    /// Resized, the selected rows in view stay in view, centred; once they
+    /// don't fit, the first stays and the rest go off the bottom.
+    #[test]
+    fn resized_keeps_the_selection_in_view() {
+        let mut h = long(&["r20", "r22"]);
+        h.run();
+        centre(&h, "r20");
+        h.state_mut().height = 300.0;
+        h.run();
+        let (a, b) = (place(&h, "r20").unwrap(), place(&h, "r22").unwrap());
+        assert!(((a + b) / 2.0 - 0.5).abs() < 0.12, "the two centred: {a} {b}");
+        h.state_mut().height = 40.0;
+        h.run();
+        assert!(place(&h, "r20").is_some() && place(&h, "r22").is_none(), "r22 off the bottom");
+        assert!(h.query_by_label("Selected rows below").is_some());
     }
 
     /// Kept while the rows are loading again, and those gone let go.

@@ -44,6 +44,27 @@ and uses partman-widgets for blank rows and the reload button.
 - **Scrolling**: the rows' area is reported to `partman-scroll`
   (`partman_scroll::area` on what egui_extras' `body` gives back), so a
   notch over a scrolling table moves a share of its height.
+- **Scrolling to the selection** (scrolling tables only): the rows' view
+  at the end of each frame (`View`: its size, whether a row shown was
+  selected, the selected rows in view, a scroll to come) is in egui's
+  memory, not persisted. Not drawn the frame before, or without rows then,
+  a table is first shown, and scrolls the first selected row to the middle
+  (over the kept offset); with none selected at the end of the last frame,
+  a selection now is the app's, and is scrolled to the same way (a click
+  in the table is in that record, so it isn't). A view of another size
+  centres the selected rows that were in view, or puts the first at the
+  top when they don't fit (`centred`). Rows' places are worked out as
+  egui_extras lays them: each its height and the item spacing. The new
+  offset is decided after the rows are drawn, so the pass is discarded
+  (`request_discard`) and the next starts there (`vertical_scroll_offset`).
+- **Out of view marks** (`out_of_view`): a double caret, footnote sized,
+  on a pill of the panel's colour at the view's top or bottom edge, for
+  selected rows wholly out of sight that way; "Selected rows above" /
+  "below" for screen readers and tests. Not drawn on a pass to be
+  discarded.
+- **Most height:** egui_extras' least height before rows scroll (200) is
+  lowered to `max_height` when that's smaller, which it would otherwise
+  override.
 - **Fitting:** the columns but the last start at their widths (the app's,
   given by `widths` and of the right count, else each `Col`'s), and the
   last takes the rest. When they'd be wider than the room (the widths, the

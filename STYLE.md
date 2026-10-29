@@ -330,6 +330,23 @@ button should only ever perform a selection.
 `[tables.state]` Table state like the active selection and scroll position should be
 retained between app restarts and workflow step navigation.
 
+`[tables.scroll-to-selected]` When a table is first shown and a row is selected, it's scrolled to
+show the first selected row centered.  This takes precedence over a
+scroll position kept by `[tables.state]`, which holds when nothing is
+selected.
+
+`[tables.scroll-to-auto-selected]` If a table is already shown with nothing selected, and a row is then
+selected automatically (by the app, not by the user clicking in the
+table), the table is scrolled to show the first selected row centered.
+
+`[tables.scroll-on-resize]` When a table is resized, the selected rows that were in view are kept
+in view, centered as far as possible.  When they no longer all fit, the
+first of them stays in view and the others fall off the bottom.
+
+`[tables.selected-out-of-view]` If selected rows are above the visible rows, a small double caret
+pointing up, footnote sized, is overlaid at the top of the visible
+rows; if below, one pointing down at their bottom.
+
 `[tables.agent-buttons]` Separate non-agentic and agentic action buttons below a table so
 that they're on separate lines since their sizes differ.  First the
 regular action buttons, then the agentic ones.

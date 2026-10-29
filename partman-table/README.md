@@ -27,6 +27,11 @@ style and design guide, [STYLE.md](../STYLE.md), has them:
 - **No selection without actions:** a table with nothing to do on
   selected rows is made without selection, and has no checkbox column.
 - **Only the rows scroll;** the header and the actions stay put.
+- **The selection kept in sight:** a table first shown, or one whose
+  rows the app selects from none, scrolls the first selected row to the
+  middle; resized, it keeps the selected rows that were in view there.
+  Selected rows out of sight above or below are marked by a small double
+  caret at that edge.
 - **Kept.** The selection, the row last clicked and the scroll position
   are kept under the table's id, through the app's steps and from one
   run to the next.
