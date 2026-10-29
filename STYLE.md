@@ -3,8 +3,8 @@
 For partman and partman-like, and associated applications.
 
 Each section, and each rule in the longer ones, has a tag in brackets,
-like `[cards.stacks]`.  Refer to the guide by tag, for example "STYLE.md
-`[tables.min-rows]`", rather than by heading or position.  A tag never
+like `[cards.stacks]`.  Refer to the guide by tag, for example
+`STYLE.md [tables.min-rows]`, rather than by heading or position.  A tag never
 changes and is never reused, even when its text is reworded or moved;
 a rule that's dropped takes its tag with it.
 
