@@ -392,7 +392,7 @@ impl Proof {
         ui.label(RichText::new("Monospace: STM32F103RGT6 PA9 USART1_TX").monospace());
         ui.horizontal(|ui| {
             ui.label("A link:");
-            ui.hyperlink_to("the toolbox", "https://git.rockgarden.net/bson/partman-egui-toolbox").on_hover_text("Open the toolbox's repository in the browser");
+            ui.hyperlink_to("the toolbox", "https://github.com/bson/partman-egui-toolbox").on_hover_text("Open the toolbox's repository in the browser");
         });
         blank_row(ui);
         ui.strong("Buttons");

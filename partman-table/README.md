@@ -43,8 +43,8 @@ Add it as a git dependency from the toolbox, pinned to a commit, with
 partman-widgets, whose icon buttons the actions use:
 
 ```toml
-partman-table = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
-partman-widgets = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
+partman-table = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
+partman-widgets = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
 ```
 
 Make a `Table` with an id and the rows' keys, which must stay the same

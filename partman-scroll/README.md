@@ -17,7 +17,7 @@ Scrolling as the toolbox's style and design guide,
 Add it as a git dependency from the toolbox, pinned to a commit:
 
 ```toml
-partman-scroll = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
+partman-scroll = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
 ```
 
 Call `partman_scroll::drive(ctx)` once a frame, before anything's

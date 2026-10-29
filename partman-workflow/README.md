@@ -25,7 +25,7 @@ applies to, so nothing is saved here and there's no save button to show.
 Add it as a git dependency from the toolbox, pinned to a commit:
 
 ```toml
-partman-workflow = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
+partman-workflow = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
 ```
 
 Implement `Workflow` for what holds the workflow's state: its steps, the

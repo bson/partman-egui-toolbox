@@ -21,7 +21,7 @@ texture egui shows as it would any picture.
 Add it as a git dependency from the toolbox, pinned to a commit:
 
 ```toml
-partman-3d = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
+partman-3d = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
 ```
 
 Give it eframe's wgpu render state once, at the start:

@@ -44,14 +44,14 @@ Each is a crate of its own in this repository, added as a git dependency
 pinned to a commit:
 
 ```toml
-partman-3d = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
-partman-card = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
-partman-fonts = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
-partman-scroll = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
-partman-sidebar = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
-partman-table = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
-partman-widgets = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
-partman-workflow = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
+partman-3d = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
+partman-card = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
+partman-fonts = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
+partman-scroll = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
+partman-sidebar = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
+partman-table = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
+partman-widgets = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
+partman-workflow = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
 ```
 
 To work on them beside an app, a `[patch]` in the app's
@@ -60,7 +60,7 @@ app uses: the crates use each other by path, so one patched and another
 not gives the app two copies of what they share.
 
 ```toml
-[patch."https://git.rockgarden.net/bson/partman-egui-toolbox"]
+[patch."https://github.com/bson/partman-egui-toolbox"]
 partman-3d = { path = "../partman-egui-toolbox/partman-3d" }
 partman-card = { path = "../partman-egui-toolbox/partman-card" }
 partman-fonts = { path = "../partman-egui-toolbox/partman-fonts" }

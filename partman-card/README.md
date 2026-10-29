@@ -32,7 +32,7 @@ pin planner's cards are drawn with.
 Add it as a git dependency from the toolbox, pinned to a commit:
 
 ```toml
-partman-card = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
+partman-card = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
 ```
 
 Each frame, give `partman_card::board` the layout, the cards with their
@@ -44,7 +44,7 @@ To work on it beside an app, a `[patch]` in the app's
 `.cargo/config.toml` uses a local checkout instead:
 
 ```toml
-[patch."https://git.rockgarden.net/bson/partman-egui-toolbox"]
+[patch."https://github.com/bson/partman-egui-toolbox"]
 partman-card = { path = "../partman-egui-toolbox/partman-card" }
 ```
 

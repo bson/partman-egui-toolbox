@@ -27,7 +27,7 @@ following it:
 Add it as a git dependency from the toolbox, pinned to a commit:
 
 ```toml
-partman-widgets = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
+partman-widgets = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
 ```
 
 Use `blank_row`, `check`, `radio` and `explanation` in place of egui's

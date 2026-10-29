@@ -11,7 +11,7 @@ They're built in, about 830 kB.
 Add it as a git dependency from the toolbox, pinned to a commit:
 
 ```toml
-partman-fonts = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
+partman-fonts = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
 ```
 
 Install them once, before the first frame:

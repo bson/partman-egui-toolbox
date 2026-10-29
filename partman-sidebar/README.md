@@ -20,7 +20,7 @@ settings, so the sidebar comes back as the user left it.
 Add it as a git dependency from the toolbox, pinned to a commit:
 
 ```toml
-partman-sidebar = { git = "https://git.rockgarden.net/bson/partman-egui-toolbox", rev = "…" }
+partman-sidebar = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
 ```
 
 Each frame, before the work area's central panel, show a `Sidebar` made
