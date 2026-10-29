@@ -2093,6 +2093,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "partman-fonts"
+version = "0.1.0"
+dependencies = [
+ "egui",
+ "egui_kittest",
+]
+
+[[package]]
 name = "partman-proof"
 version = "0.1.0"
 dependencies = [
@@ -2102,11 +2110,14 @@ dependencies = [
  "image",
  "partman-3d",
  "partman-card",
+ "partman-fonts",
  "partman-scroll",
  "partman-sidebar",
  "partman-table",
  "partman-widgets",
+ "partman-workflow",
  "ruststep",
+ "serde",
  "truck-meshalgo",
  "truck-stepio",
 ]

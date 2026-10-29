@@ -13,10 +13,13 @@ egui.workspace = true
 eframe = { version = "0.36", default-features = false, features = ["wgpu", "wayland", "x11", "default_fonts", "persistence"] }
 partman-3d = { path = "../partman-3d" }
 partman-card = { path = "../partman-card" }
+partman-fonts = { path = "../partman-fonts" }
 partman-scroll = { path = "../partman-scroll" }
 partman-sidebar = { path = "../partman-sidebar" }
 partman-table = { path = "../partman-table" }
 partman-widgets = { path = "../partman-widgets" }
+partman-workflow = { path = "../partman-workflow" }
+serde.workspace = true
 # The symbol's units, prerendered as PNG
 image = { version = "0.25", default-features = false, features = ["png"] }
 # The 3D model (STEP) made into triangles, pure Rust, as Partman does

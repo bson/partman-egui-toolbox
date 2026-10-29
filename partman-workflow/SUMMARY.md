@@ -20,6 +20,10 @@ the toolbox's `STYLE.md`; the pin planner is its first user.
 - `advance_button(ui, wf)` and `advance_row(ui, wf, left)`: the button,
   alone or right-aligned in a row; they return a refusal's reason. Not
   drawn on the last step.
+- `finish_button(ui, action, hint, ready)`: the last step's button in a
+  workflow that ends by doing something (a modal one's "Update →"),
+  drawn as the advance button is; true when pressed, greyed with
+  `ready`'s reason when it can't be.
 - `card_area(ui, Width { max, min }, contents)` and `fit_height(ui,
   below, at_least)`.
 - `Colors`: the bar's fill, hover, current step, and text colours.

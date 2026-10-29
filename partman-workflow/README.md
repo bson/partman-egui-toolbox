@@ -41,9 +41,12 @@ the texts shown over the steps and the button. Then each frame:
 
 The bar's colours come from the app's theme, or `Colors::from_visuals`.
 
-Workflows in a dialog, whose last step's button performs the whole
-workflow and which can be cancelled, aren't here yet: they come with the
-first app that needs one.
+A workflow in a dialog uses the same: its `step_bar` inside the dialog,
+and on its last step `finish_button`, named for what the whole workflow
+does ("Update →"), which the app acts on and closes the dialog. The
+dialog itself, its Cancel and keeping the app from closing while it's
+open, are the app's; the toolbox's proof sheet (`partman-proof`) has
+one.
 
 ## Building
 

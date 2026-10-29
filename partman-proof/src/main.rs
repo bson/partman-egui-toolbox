@@ -6,6 +6,7 @@
 //! look and behave, to be seen in light and dark without an app.
 
 mod agent;
+mod flow;
 mod step;
 
 use std::collections::BTreeSet;
@@ -28,8 +29,29 @@ const CARDS: [(&str, &str); 8] = [
     ("3d", "3D model"),
 ];
 
-/// The tables in one stack, the rest in another.
+/// The tables in one stack, the rest in another, should the board start
+/// following the window; it starts as `default_layout` has it instead.
 const DEFAULT: [&[&str]; 2] = [&["many", "one", "none", "page"], &["buttons", "agents", "symbol", "3d"]];
+
+/// The window's size to start with, in points.
+const WINDOW: [f32; 2] = [1556.0, 1158.0];
+/// The agent sidebar's width until it's dragged.
+const SIDEBAR: f32 = 701.0;
+
+/// The board as it starts, arranged by hand for a window of `WINDOW`:
+/// the tables, symbol and 3D model in a stack along the top, buttons and
+/// text under it, agent tasks beside that.
+fn default_layout() -> Layout {
+    let stack = |rect: [f32; 4], cards: &[&str], top: &str| partman_card::Stack { rect, cards: cards.iter().map(|c| c.to_string()).collect(), top: top.into() };
+    let mut l = Layout::default();
+    l.stacks = vec![
+        stack([808.0, 530.0, 716.0, 532.0], &["agents"], "agents"),
+        stack([0.0, 530.0, 792.0, 532.0], &["buttons"], "buttons"),
+        stack([0.0, 0.0, 792.0, 514.0], &["many", "one", "none", "page", "symbol", "3d"], "one"),
+    ];
+    l.fitted = false;
+    l
+}
 
 /// The STM32F103RGT6's symbol, a PNG for each of its units, as KiCad
 /// plots them (kicad-cli sym export svg, then at 400 dpi on white).
@@ -60,6 +82,8 @@ const LAYOUT: &str = "layout";
 const SIDEBAR_WIDTH: &str = "sidebar-width";
 /// Its input's height, the same
 const INPUT_HEIGHT: &str = "agent-input-height";
+/// The app's workflow, saved with the app as the guide has it
+const WORKFLOW: &str = "workflow";
 
 /// Parts, made up, for rows: reference, value, package, quantity.
 fn parts(n: usize) -> Vec<(String, String, &'static str, u32)> {
@@ -99,14 +123,18 @@ struct Proof {
     agent: agent::Agent,
     sidebar_open: bool,
     sidebar_width: Option<f32>,
+    /// The app's workflow, its first step the board
+    flow: flow::Flow,
+    /// The price check dialog's workflow, while it's open
+    prices: Option<flow::Prices>,
 }
 
 impl Proof {
-    fn new(layout: Option<Layout>, sidebar_width: Option<f32>, input_height: Option<f32>) -> Proof {
+    fn new(layout: Option<Layout>, sidebar_width: Option<f32>, input_height: Option<f32>, flow: Option<flow::Flow>) -> Proof {
         let many = parts(60);
         let many_keys = many.iter().map(|p| p.0.clone()).collect();
         Proof {
-            layout: layout.unwrap_or_default(),
+            layout: layout.unwrap_or_else(default_layout),
             many,
             many_keys,
             one: BTreeSet::new(),
@@ -124,7 +152,9 @@ impl Proof {
             model: Model::Unmade,
             agent: agent::Agent::new(input_height),
             sidebar_open: false,
-            sidebar_width,
+            sidebar_width: sidebar_width.or(Some(SIDEBAR)),
+            flow: flow.unwrap_or_default(),
+            prices: None,
         }
     }
 
@@ -144,12 +174,34 @@ impl Proof {
                         ui.ctx().set_theme(pref);
                     }
                 }
+                ui.separator();
+                if ui.add_enabled(self.prices.is_none(), egui::Button::new("Check prices…")).on_hover_text("Check the parts' prices, in a dialog of steps of its own").clicked() {
+                    self.prices = Some(flow::Prices::default());
+                }
                 if !self.said.is_empty() {
                     ui.separator();
                     ui.label(&self.said);
                 }
             });
         });
+        egui::Panel::top("steps").show(ui, |ui| {
+            ui.add_space(4.0);
+            ui.horizontal(|ui| partman_workflow::step_bar(ui, &partman_workflow::Colors::from_visuals(ui.visuals()), &mut self.flow));
+            ui.add_space(4.0);
+        });
+        if let Some(p) = &mut self.prices {
+            match p.show(ui.ctx(), &self.many) {
+                flow::Outcome::Open => {}
+                flow::Outcome::Cancelled => {
+                    self.prices = None;
+                    self.said = "Price check cancelled".into();
+                }
+                flow::Outcome::Done(what) => {
+                    self.prices = None;
+                    self.said = what;
+                }
+            }
+        }
         // Beside the board, as an app's agent panel is beside its work area
         let asks = self.agent.asks();
         partman_sidebar::Sidebar::new("proof-agent", "Agent panel", &mut self.sidebar_open, &mut self.sidebar_width).attention(asks).show(ui, &partman_sidebar::Colors::from_visuals(ui.visuals()), |ui| {
@@ -157,6 +209,12 @@ impl Proof {
         });
         let colors = Colors::from_visuals(ui.visuals());
         egui::CentralPanel::default().frame(egui::Frame::new().fill(colors.canvas).inner_margin(12)).show(ui, |ui| {
+            if self.flow.at != flow::Step::Cards {
+                if let Some(why) = self.flow.step_ui(ui, &self.many, &self.many_keys) {
+                    self.said = why;
+                }
+                return;
+            }
             let cards: Vec<Card> = CARDS.iter().map(|(key, title)| Card { key, title, loading: false, close: false }).collect();
             let mut layout = std::mem::take(&mut self.layout);
             partman_card::board(ui, &colors, &mut layout, &cards, &DEFAULT, |ui, key| match key {
@@ -215,7 +273,7 @@ impl Proof {
                     }
                 },
                 |ui, sel| {
-                    if AgentButton::new("Review the selection").enabled(!sel.is_empty()).show(ui).on_hover_text(needs(sel, "Have an agent review the selected rows")).clicked() {
+                    if agent_button(ui, "Review the selection").enabled(!sel.is_empty()).show(ui).on_hover_text(needs(sel, "Have an agent review the selected rows")).clicked() {
                         *said.borrow_mut() = Some(format!("An agent reviews {}", sel.join(", ")));
                     }
                 },
@@ -402,17 +460,24 @@ impl Proof {
         });
         ui.horizontal_wrapped(|ui| {
             for task in ["Extract pin info and attach", "Review the selection", "Find the part's documents"] {
-                press(AgentButton::new(task).show(ui), &format!("Give an agent the task \"{task}\": says it was pressed"));
+                press(agent_button(ui, task).show(ui), &format!("Give an agent the task \"{task}\": says it was pressed"));
             }
         });
         ui.horizontal_wrapped(|ui| {
-            press(AgentButton::new("Disabled").enabled(false).show(ui), "An agent task that can't be given now: never does anything");
-            press(AgentButton::new("Another colour").color(egui::Color32::from_rgb(0x3f, 0x8f, 0xe0)).show(ui), "An agent task with the A in another colour: says it was pressed");
+            press(agent_button(ui, "Disabled").enabled(false).show(ui), "An agent task that can't be given now: never does anything");
+            press(agent_button(ui, "Another colour").color(egui::Color32::from_rgb(0x3f, 0x8f, 0xe0)).show(ui), "An agent task with the A in another colour: says it was pressed");
         });
         if let Some(s) = said {
             self.said = s;
         }
     }
+}
+
+/// An agent task button, its A in Inter's semibold as the apps have it,
+/// once the fonts are installed: a test's first frame comes before.
+fn agent_button(ui: &Ui, task: &str) -> AgentButton {
+    let b = AgentButton::new(task);
+    if ui.fonts(|f| f.families().contains(&partman_fonts::semibold_family())) { b.family(partman_fonts::semibold_family()) } else { b }
 }
 
 /// A hover text for an action on the selection, saying when there's none
@@ -527,6 +592,12 @@ fn none_card(ui: &mut Ui) {
 impl eframe::App for Proof {
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         partman_scroll::drive(ctx);
+        // A modal workflow keeps the app from closing until it's finished
+        // or cancelled
+        if self.prices.is_some() && ctx.input(|i| i.viewport().close_requested()) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            self.said = "Finish or cancel the price check first".into();
+        }
     }
 
     fn ui(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
@@ -537,25 +608,28 @@ impl eframe::App for Proof {
         eframe::set_value(storage, LAYOUT, &self.layout);
         eframe::set_value(storage, SIDEBAR_WIDTH, &self.sidebar_width);
         eframe::set_value(storage, INPUT_HEIGHT, &self.agent.input_height);
+        eframe::set_value(storage, WORKFLOW, &self.flow);
     }
 }
 
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_title("Toolbox proof").with_app_id("partman-proof").with_inner_size([1100.0, 800.0]),
+        viewport: egui::ViewportBuilder::default().with_title("Toolbox proof").with_app_id("partman-proof").with_inner_size(WINDOW),
         ..Default::default()
     };
     eframe::run_native(
         "partman-proof",
         options,
         Box::new(|cc| {
+            partman_fonts::install(&cc.egui_ctx);
             if let Some(rs) = &cc.wgpu_render_state {
                 partman_3d::install(&cc.egui_ctx, rs);
             }
             let layout = cc.storage.and_then(|s| eframe::get_value(s, LAYOUT));
             let width = cc.storage.and_then(|s| eframe::get_value::<Option<f32>>(s, SIDEBAR_WIDTH)).flatten();
             let input = cc.storage.and_then(|s| eframe::get_value::<Option<f32>>(s, INPUT_HEIGHT)).flatten();
-            Ok(Box::new(Proof::new(layout, width, input)))
+            let flow = cc.storage.and_then(|s| eframe::get_value(s, WORKFLOW));
+            Ok(Box::new(Proof::new(layout, width, input, flow)))
         }),
     )
 }
@@ -563,14 +637,14 @@ fn main() -> eframe::Result {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use egui_kittest::kittest::Queryable;
+    use egui_kittest::kittest::{NodeT, Queryable};
 
     /// Every card's tab brings it up, with what it's to show.
     #[test]
     fn every_card_shows() {
-        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).build_ui_state(|ui, p: &mut Proof| p.show(ui), Proof::new(None, None, None));
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).build_ui_state(|ui, p: &mut Proof| p.show(ui), Proof::new(None, None, None, None));
         h.run();
-        for (title, shows) in [("Selecting many", "Agent: Review the selection"), ("Selecting one", "Select a row"), ("No selection", "Datasheet"), ("A page", "Select Item 01"), ("Buttons and text", "Heading"), ("Agent tasks", "Agent: Find the part's documents"), ("KiCad symbol", "Unit F")] {
+        for (title, shows) in [("Selecting many", "Delete the selected rows"), ("Selecting one", "Select a row"), ("No selection", "Datasheet"), ("A page", "Select Item 01"), ("Buttons and text", "Heading"), ("Agent tasks", "Agent: Find the part's documents"), ("KiCad symbol", "Unit F")] {
             h.get_by_label(title).click();
             // A fitted stack takes a few frames to its card's height
             h.run_steps(10);
@@ -583,7 +657,7 @@ mod tests {
     /// transcript, and the agent's question is answered.
     #[test]
     fn the_agent_sidebar_opens_and_answers() {
-        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).build_ui_state(|ui, p: &mut Proof| p.show(ui), Proof::new(None, None, None));
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).build_ui_state(|ui, p: &mut Proof| p.show(ui), Proof::new(None, None, None, None));
         h.run();
         assert!(h.query_by_label("Fake agent").is_none(), "shut to start");
         h.get_by_label("Agent panel").click();
@@ -595,10 +669,68 @@ mod tests {
         assert!(h.query_by_label("Allowed.").is_some() && h.query_by_label("Deny").is_none());
     }
 
+    /// The app's workflow: the board its first step, a step ahead that
+    /// says what's missing when pressed too soon, and each unlocked by
+    /// what the one before it makes.
+    #[test]
+    fn the_apps_workflow_steps_on() {
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).build_ui_state(|ui, p: &mut Proof| p.show(ui), Proof::new(None, None, None, None));
+        h.run();
+        assert!(h.query_by_label("Selecting many").is_some(), "the board first");
+        h.get_by_label("Choose parts").click();
+        h.run_steps(3);
+        let button = h.get_by_label("Details →").rect();
+        assert!(button.bottom() <= 800.0, "the advance row in sight, the table fitted above it: {button:?}");
+        h.get_by_label("Details →").click();
+        h.run_steps(3);
+        assert_eq!(h.state().said, "Choose some parts first");
+        assert!(h.get_by_label("Summary").accesskit_node().is_disabled());
+        h.get_by_label("Select row 1").click();
+        h.run_steps(3);
+        h.get_by_label("Details →").click();
+        h.run_steps(3);
+        assert_eq!(h.state().flow.at, flow::Step::Details);
+        h.get_by_role(egui::accesskit::Role::TextInput).focus();
+        h.run_steps(2);
+        h.get_by_role(egui::accesskit::Role::TextInput).type_text("Rev B");
+        h.run_steps(2);
+        h.get_by_label("Summary →").click();
+        h.run_steps(3);
+        assert!(h.query_by_label_contains("Rev B: 1 part").is_some());
+        // The last step's button does the workflow's work, and starts over
+        h.get_by_label("Place order →").click();
+        h.run_steps(3);
+        assert_eq!(h.state().said, "Placed Rev B");
+        assert!(h.state().flow.at == flow::Step::Cards && h.state().flow.chosen.is_empty());
+    }
+
+    /// The modal workflow: its own step bar, the next step unlocked by
+    /// picking, its action closing it, and Cancel discarding it.
+    #[test]
+    fn the_price_check_is_a_modal_workflow() {
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).build_ui_state(|ui, p: &mut Proof| p.show(ui), Proof::new(None, None, None, None));
+        h.run();
+        h.get_by_label("Check prices…").click();
+        h.run_steps(3);
+        assert!(h.get_by_label("Review").accesskit_node().is_disabled(), "nothing picked yet");
+        h.get_by_label("Select R2").click();
+        h.run_steps(3);
+        h.get_by_label("Review →").click();
+        h.run_steps(3);
+        h.get_by_label("Update →").click();
+        h.run_steps(3);
+        assert!(h.state().prices.is_none() && h.state().said == "Updated the prices of 1 part", "{}", h.state().said);
+        h.get_by_label("Check prices…").click();
+        h.run_steps(3);
+        h.get_by_label("Cancel").click();
+        h.run_steps(3);
+        assert!(h.state().prices.is_none() && h.state().said == "Price check cancelled");
+    }
+
     /// The app selecting a row from none scrolls the table to it.
     #[test]
     fn selecting_a_row_scrolls_to_it() {
-        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).build_ui_state(|ui, p: &mut Proof| p.show(ui), Proof::new(None, None, None));
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).build_ui_state(|ui, p: &mut Proof| p.show(ui), Proof::new(None, None, None, None));
         h.run();
         h.get_by_label("Selecting one").click();
         h.run();
@@ -622,16 +754,17 @@ mod tests {
             // with eframe's
             let rs = egui_kittest::wgpu::create_render_state(egui_kittest::wgpu::default_wgpu_setup(), eframe::egui_wgpu::RendererOptions::default());
             let renderer = egui_kittest::wgpu::WgpuTestRenderer::from_render_state(rs.clone());
-            let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).renderer(renderer).build_ui_state(
+            let mut h = egui_kittest::Harness::builder().with_size(egui::Vec2::from(WINDOW)).renderer(renderer).build_ui_state(
                 move |ui, p: &mut Proof| {
                     if !partman_3d::installed(ui.ctx()) {
                         partman_3d::install(ui.ctx(), &rs);
                     }
                     p.show(ui)
                 },
-                Proof::new(None, None, None),
+                Proof::new(None, None, None, None),
             );
             h.ctx.set_visuals(visuals);
+            partman_fonts::install(&h.ctx);
             h.run_steps(10);
             for (n, (key, title)) in CARDS.iter().enumerate() {
                 h.get_by_label(title).click();
@@ -658,6 +791,24 @@ mod tests {
                 }
                 h.render().unwrap().save(dir.join(format!("proof-{theme}-{n}.png"))).unwrap();
             }
+            for (step, name) in [("Choose parts", "choose"), ("Details", "details")] {
+                if *step == *"Details" {
+                    h.get_by_label("Select row 1").click();
+                    h.get_by_label("Select row 3").click();
+                    h.run_steps(3);
+                }
+                h.get_by_label(step).click();
+                h.run_steps(10);
+                h.render().unwrap().save(dir.join(format!("proof-{theme}-flow-{name}.png"))).unwrap();
+            }
+            h.get_by_label("Check prices…").click();
+            h.run_steps(10);
+            h.get_by_label("Select R2").click();
+            h.run_steps(5);
+            h.render().unwrap().save(dir.join(format!("proof-{theme}-prices.png"))).unwrap();
+            h.get_by_label("Cancel").click();
+            h.get_by_label("Cards").click();
+            h.run_steps(10);
             h.get_by_label("Agent panel").click();
             h.run_steps(30);
             h.get_by_role(egui::accesskit::Role::MultilineTextInput).focus();

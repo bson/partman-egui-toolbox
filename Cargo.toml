@@ -1,5 +1,5 @@
 [workspace]
-members = ["partman-3d", "partman-card", "partman-proof", "partman-scroll", "partman-sidebar", "partman-table", "partman-widgets", "partman-workflow"]
+members = ["partman-3d", "partman-card", "partman-fonts", "partman-proof", "partman-scroll", "partman-sidebar", "partman-table", "partman-widgets", "partman-workflow"]
 resolver = "3"
 
 [workspace.package]

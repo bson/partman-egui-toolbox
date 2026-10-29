@@ -203,6 +203,21 @@ pub fn advance_button<W: Workflow + ?Sized>(ui: &mut Ui, wf: &mut W) -> Option<S
     }
 }
 
+/// The last step's button in a workflow that ends by doing something, a
+/// dialog's say: drawn as the advance button is, named for what the
+/// whole workflow does ("Update", "Import") with the arrow, and true when
+/// pressed. `ready` is whether it can be, or why not.
+pub fn finish_button(ui: &mut Ui, action: &str, hint: &str, ready: Result<(), String>) -> bool {
+    let label = format!("{action} →");
+    let b = egui::Button::new(RichText::new(&label).strong().color(ui.visuals().strong_text_color())).fill(ui.visuals().selection.bg_fill).corner_radius(CornerRadius::same(4));
+    let r = ui.add_enabled(ready.is_ok(), b);
+    let r = match &ready {
+        Ok(()) => r.on_hover_text(hint),
+        Err(why) => r.on_disabled_hover_text(why),
+    };
+    r.clicked()
+}
+
 /// A row ending in the advance button, at its right; `left` draws what
 /// goes before it, from the left.
 pub fn advance_row<W: Workflow + ?Sized>(ui: &mut Ui, wf: &mut W, left: impl FnOnce(&mut Ui)) -> Option<String> {
@@ -370,6 +385,28 @@ mod tests {
         assert_eq!(h.state().current(), Step::Done);
         // The last step has nowhere to advance to
         assert!(h.query_by_label_contains("→").is_none());
+    }
+
+    /// The finishing button is pressed when ready, and says why not when
+    /// it isn't.
+    #[test]
+    fn the_finish_button_acts_when_ready() {
+        let mut h = egui_kittest::Harness::builder().with_size(vec2(300.0, 100.0)).build_ui_state(
+            |ui, (ready, pressed): &mut (bool, bool)| {
+                let r = if *ready { Ok(()) } else { Err("Pick one first".to_string()) };
+                *pressed |= finish_button(ui, "Update", "Update the prices", r);
+            },
+            (false, false),
+        );
+        h.run();
+        h.get_by_label("Update →").click();
+        h.run();
+        assert!(!h.state().1, "not while it isn't ready");
+        h.state_mut().0 = true;
+        h.run();
+        h.get_by_label("Update →").click();
+        h.run();
+        assert!(h.state().1);
     }
 
     #[test]

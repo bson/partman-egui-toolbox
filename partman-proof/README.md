@@ -24,6 +24,21 @@ without starting Partman, the pin planner or another full app.
   and turned about with the pointer. Drawing it needs a GPU, so it isn't
   in the automated tests.
 
+It opens laid out as arranged by hand for a window of 1556 by 1158: the
+tables, symbol and 3D model in a stack along the top, buttons and text
+under it, agent tasks beside that, and the agent sidebar 701 wide when
+opened. What the user changes is kept between runs. Text is in Inter,
+from partman-fonts, as in the apps.
+
+The board is the first step of a workflow, its steps in a bar under the
+top one: Choose parts (a table in a card work area, fitted to it),
+Details and Summary, each unlocked by the one before, the advance button
+saying what's missing when pressed too soon, and Summary's "Place order
+→" placing it and going back to the start; it's kept between runs.
+"Check prices…" opens a workflow in a dialog, Search and Review, ending
+in "Update →", which does it and closes the dialog; Cancel or Escape
+discards it, and the app won't close while it's open.
+
 Beside the board is an agent sidebar, opened by the triangle on the
 window's right edge: an agent's panel with nothing behind it, made-up
 settings, usage and a transcript (its notes, the user's messages, the

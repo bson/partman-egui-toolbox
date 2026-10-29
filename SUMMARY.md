@@ -8,6 +8,8 @@ egui version and the package metadata through `[workspace.package]` and
   first used by Partman's 3D model card.
 - `partman-card/`: the board of cards. It was the egui-cards repository,
   moved here with its history.
+- `partman-fonts/`: Inter, the apps' fonts, built in; it was Partman's
+  client's and the pin planner's own copy.
 - `partman-proof/`: a program showing the components on a board of cards,
   for seeing them without an app; not a library.
 - `partman-scroll/`: adaptive scroll speed and momentum, for every
