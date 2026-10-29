@@ -1,5 +1,5 @@
 // Copyright (C) 2026 Jan Brittenson
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! A sidebar the way the toolbox's style guide (STYLE.md) has the agent
 //! sidebar: a small triangle on the work area's edge, halfway down, slides

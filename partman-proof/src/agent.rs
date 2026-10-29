@@ -1,5 +1,5 @@
 // Copyright (C) 2026 Jan Brittenson
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! An agent's panel with nothing behind it: made-up settings, usage and a
 //! transcript, laid out as the pin planner's is, for seeing the sidebar

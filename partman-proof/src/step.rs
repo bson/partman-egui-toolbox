@@ -1,5 +1,5 @@
 // Copyright (C) 2026 Jan Brittenson
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! The proof's STEP model made into coloured triangles for partman-3d, as
 //! Partman's client makes a part's model. Partman does it in a child

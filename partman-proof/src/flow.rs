@@ -1,5 +1,5 @@
 // Copyright (C) 2026 Jan Brittenson
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Two workflows, as the style guide has them: the app's own, its steps
 //! in a bar under the top one and the board of cards the first of them,

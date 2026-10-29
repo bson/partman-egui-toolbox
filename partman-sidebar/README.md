@@ -43,5 +43,7 @@ cargo test -p partman-sidebar
 
 Copyright (C) 2026 Jan Brittenson.
 
-partman-sidebar is free software under the GNU Affero General Public
-License, version 3 or any later version ([LICENSE](../LICENSE)).
+partman-sidebar is licensed under either of the MIT license
+([LICENSE-MIT](../LICENSE-MIT)) or the Apache License, Version 2.0
+([LICENSE-APACHE](../LICENSE-APACHE)), at your option, as the rest of the
+toolbox.

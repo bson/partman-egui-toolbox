@@ -1,5 +1,5 @@
 // Copyright (C) 2026 Jan Brittenson
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! The fonts Partman, the pin planner and the apps like them are drawn in,
 //! built in so every app has the same: Inter for text, its semibold face

@@ -1,5 +1,5 @@
 // Copyright (C) 2026 Jan Brittenson
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! A board of cards: a page's information split into cards, each with a
 //! tab, kept in stacks the user moves, resizes and rearranges. Tabs reorder

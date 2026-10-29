@@ -48,4 +48,9 @@ canvas says 3D needs the wgpu renderer.
 
 ## License
 
-AGPL-3.0-or-later, as the rest of the toolbox.
+Copyright (C) 2026 Jan Brittenson.
+
+partman-3d is licensed under either of the MIT license
+([LICENSE-MIT](../LICENSE-MIT)) or the Apache License, Version 2.0
+([LICENSE-APACHE](../LICENSE-APACHE)), at your option, as the rest of the
+toolbox.

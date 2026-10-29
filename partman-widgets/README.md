@@ -48,3 +48,12 @@ button opening a dialog or needing more done ends in "…".
 ```sh
 cargo test
 ```
+
+## License
+
+Copyright (C) 2026 Jan Brittenson.
+
+partman-widgets is licensed under either of the MIT license
+([LICENSE-MIT](../LICENSE-MIT)) or the Apache License, Version 2.0
+([LICENSE-APACHE](../LICENSE-APACHE)), at your option, as the rest of the
+toolbox.

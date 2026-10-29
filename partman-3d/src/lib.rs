@@ -1,5 +1,5 @@
 // Copyright (C) 2026 Jan Brittenson
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! A 3D scene drawn by the GPU in an egui canvas, turned about by
 //! dragging: coloured meshes, as a part's model on its board, lit from

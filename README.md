@@ -85,5 +85,19 @@ which does.
 
 Copyright (C) 2026 Jan Brittenson.
 
-The toolbox is free software under the GNU Affero General Public License,
-version 3 or any later version ([LICENSE](LICENSE)).
+The toolbox is licensed under either of
+
+- the MIT license ([LICENSE-MIT](LICENSE-MIT)), or
+- the Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE)),
+
+at your option, as egui is. Partman and the pin planner, which use it,
+are under the GNU Affero General Public License.
+
+Unless you explicitly state otherwise, any contribution intentionally
+submitted for inclusion in the toolbox by you, as defined in the
+Apache-2.0 license, shall be dual licensed as above, without any
+additional terms or conditions.
+
+Some files keep licences of their own, said where they are: the fonts in
+partman-fonts (SIL Open Font License 1.1) and the 3D model in
+partman-proof (CC-BY-SA 4.0, with KiCad's exception).

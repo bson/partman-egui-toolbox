@@ -1,5 +1,5 @@
 // Copyright (C) 2026 Jan Brittenson
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Scrolling as the toolbox's style guide (STYLE.md) has it, for every
 //! scroll area in an egui app at once: a wheel notch or a trackpad swipe

@@ -25,5 +25,10 @@ Then `partman_fonts::semibold(size)` is a heading's font, and
 
 ## License
 
-The code is AGPL-3.0-or-later, as the rest of the toolbox. Inter is
-under the SIL Open Font License 1.1 ([fonts/OFL-Inter.txt](fonts/OFL-Inter.txt)).
+Copyright (C) 2026 Jan Brittenson.
+
+partman-fonts is licensed under either of the MIT license
+([LICENSE-MIT](../LICENSE-MIT)) or the Apache License, Version 2.0
+([LICENSE-APACHE](../LICENSE-APACHE)), at your option, as the rest of the
+toolbox. Inter, the fonts themselves, is under the SIL Open Font License 1.1
+([fonts/OFL-Inter.txt](fonts/OFL-Inter.txt)).

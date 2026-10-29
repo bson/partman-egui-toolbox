@@ -1,5 +1,5 @@
 // Copyright (C) 2026 Jan Brittenson
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! The small parts of the toolbox's style guide (STYLE.md), for any egui
 //! app following it: the blank row that sets groups apart, checkboxes and

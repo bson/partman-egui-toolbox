@@ -1,5 +1,5 @@
 // Copyright (C) 2026 Jan Brittenson
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Workflows the way the toolbox's style guide (STYLE.md) has them:
 //! every step in a bar across the top, the one the user is on marked and

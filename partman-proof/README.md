@@ -69,5 +69,7 @@ header).
 
 Copyright (C) 2026 Jan Brittenson.
 
-partman-proof is free software under the GNU Affero General Public
-License, version 3 or any later version ([LICENSE](../LICENSE)).
+partman-proof is licensed under either of the MIT license
+([LICENSE-MIT](../LICENSE-MIT)) or the Apache License, Version 2.0
+([LICENSE-APACHE](../LICENSE-APACHE)), at your option, as the rest of the
+toolbox. Its 3D model keeps its own licence, under Assets above.
