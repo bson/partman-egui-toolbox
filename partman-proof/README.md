@@ -40,11 +40,13 @@ in "Update →", which does it and closes the dialog; Cancel or Escape
 discards it, and the app won't close while it's open.
 
 Beside the board is an agent sidebar, opened by the triangle on the
-window's right edge: an agent's panel with nothing behind it, made-up
-settings, usage and a transcript (its notes, the user's messages, the
-agent's answers with a plan, tool calls and a table, a compaction, and
-questions waiting on the user), as the pin planner lays its own out. Its
-width is kept between runs.
+window's right edge: partman-agent's panel, its made-up agent (speaking
+ACP from a thread in the proof) at work below a made-up transcript of
+every kind of entry: the user's message, the agent's thinking, its reply
+in Markdown with a table, a plan, tool calls that passed and failed, and
+a compaction. It asks what it may do without asking; a message sent gets
+a made-up answer, after a command it asks to run. Its width, and its
+send box's height, are kept between runs.
 
 Every column sorts, and every control says on a hover what it does.
 What a button does is said in the bar at the top, which also switches

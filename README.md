@@ -17,8 +17,8 @@ starts as a change to it.
 **To see the components,** run the proof sheet, a small program showing
 them as an app would, in dark and light, without starting one: tables,
 buttons, text, a KiCad symbol and a 3D model on a board of cards, a
-workflow and one in a dialog, and an agent sidebar with a made-up
-transcript:
+workflow and one in a dialog, and an agent sidebar with a made-up agent
+at work below a made-up transcript:
 
 ```sh
 cargo run -p partman-proof
@@ -29,6 +29,7 @@ cargo run -p partman-proof
 | Crate | What it is |
 | --- | --- |
 | [partman-3d](partman-3d/README.md) | A 3D scene drawn by the GPU in a canvas, turned about by dragging. |
+| [partman-agent](partman-agent/README.md) | AI agents: any agent speaking the Agent Client Protocol, the user's choice of them, and a panel of the agent at work, its replies, tool calls and questions, for the sidebar. |
 | [partman-card](partman-card/README.md) | A board of cards: tabbed cards in stacks the user moves, resizes and rearranges, the layout kept between runs. |
 | [partman-fonts](partman-fonts/README.md) | The fonts the apps are drawn in: Inter, regular and semibold, built in, so every app has the same. |
 | [partman-proof](partman-proof/README.md) | The proof sheet: a small program showing every component as an app would, to see how they look and behave without one. Not a library. |
@@ -45,6 +46,7 @@ pinned to a commit:
 
 ```toml
 partman-3d = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
+partman-agent = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
 partman-card = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
 partman-fonts = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
 partman-scroll = { git = "https://github.com/bson/partman-egui-toolbox", rev = "…" }
@@ -62,6 +64,7 @@ not gives the app two copies of what they share.
 ```toml
 [patch."https://github.com/bson/partman-egui-toolbox"]
 partman-3d = { path = "../partman-egui-toolbox/partman-3d" }
+partman-agent = { path = "../partman-egui-toolbox/partman-agent" }
 partman-card = { path = "../partman-egui-toolbox/partman-card" }
 partman-fonts = { path = "../partman-egui-toolbox/partman-fonts" }
 partman-scroll = { path = "../partman-egui-toolbox/partman-scroll" }

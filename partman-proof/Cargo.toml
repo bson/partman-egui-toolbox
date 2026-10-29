@@ -12,6 +12,7 @@ publish = false
 egui.workspace = true
 eframe = { version = "0.36", default-features = false, features = ["wgpu", "wayland", "x11", "default_fonts", "persistence"] }
 partman-3d = { path = "../partman-3d" }
+partman-agent = { path = "../partman-agent" }
 partman-card = { path = "../partman-card" }
 partman-fonts = { path = "../partman-fonts" }
 partman-scroll = { path = "../partman-scroll" }

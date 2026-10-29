@@ -6,6 +6,9 @@ egui version and the package metadata through `[workspace.package]` and
 
 - `partman-3d/`: a 3D scene drawn by the GPU, with the app's wgpu device,
   first used by Partman's 3D model card.
+- `partman-agent/`: AI agents over the Agent Client Protocol, the agents
+  dialog and the agent panel, first used by the pin planner, where it
+  came from.
 - `partman-card/`: the board of cards. It was the egui-cards repository,
   moved here with its history.
 - `partman-fonts/`: Inter, the apps' fonts, built in; it was Partman's

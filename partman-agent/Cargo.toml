@@ -1,0 +1,23 @@
+[package]
+name = "partman-agent"
+description = "AI agents in an egui app: any agent speaking the Agent Client Protocol, the user's choice of them, and a panel of the agent at work"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+egui.workspace = true
+serde.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+# The agent's replies, in Markdown; 0.25 is the last on egui 0.36, and
+# without images or regex
+egui_commonmark = { version = "0.25", default-features = false, features = ["pulldown_cmark"] }
+# Model servers' lists of models
+ureq = { version = "3", features = ["json"] }
+partman-scroll = { path = "../partman-scroll" }
+partman-widgets = { path = "../partman-widgets" }
+
+[dev-dependencies]
+egui_kittest.workspace = true

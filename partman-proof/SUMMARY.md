@@ -19,17 +19,13 @@ is known to take well under a second.
   `agents_card`, `symbol_card`, `model_card`. `logic` drives
   `partman-scroll`, as an app would; `main` installs partman-3d with
   eframe's wgpu render state.
-- `src/agent.rs`: `Agent`, a made-up agent's panel drawn in the
-  `partman-sidebar` sidebar beside the board (`proof-agent`, "Agent
-  panel"): a name with Stop and End, Model and Effort drop-downs, a
-  context gauge, and a transcript of `Entry`s (notes, user messages, agent
-  text with `code`, a plan, tool calls that open to what they gave back,
-  a table, a permission question and an "agent asks", each answered
-  locally), then partman-widgets' `SendBox` in a bottom panel, the
-  transcript taking the rest: Enter adds the message and a made-up
-  answer, and its height is saved with eframe's storage
-  (`agent-input-height`). `asks()` lights the sidebar's control while a question waits.
-  The sidebar's width is saved with eframe's storage (`sidebar-width`).
+- `src/agent.rs`: `Agent`, the sidebar's contents: partman-agent's panel
+  (`AgentRun::ui`) on its made-up agent (`partman_agent::fake::start`),
+  started on the first frame below `transcript`, made-up entries of every
+  kind, with a `Setup` of the proof's own and no tools. Ended, it can be
+  started again. `asks()` lights the sidebar's control while the grant or
+  a permission waits. The send box's height is saved with eframe's
+  storage (`agent-input-height`), the sidebar's width (`sidebar-width`).
 - `src/flow.rs`: the two workflows. `Flow`, the app's (Cards, Choose
   parts, Details, Summary), saved with eframe's storage (`workflow`): its
   step bar in a panel under the top bar; on Cards the board, on the
@@ -64,7 +60,8 @@ GPU needed; `the_apps_workflow_steps_on` goes through the app's workflow, the ad
 button refusing with nothing chosen and the table fitted so it's in
 sight; `the_price_check_is_a_modal_workflow` updates through the dialog
 and cancels it; `the_agent_sidebar_opens_and_answers` slides the sidebar open by its
-control and answers the agent's question; `selecting_a_row_scrolls_to_it`
+control, waits for the made-up agent below the transcript, and allows
+what it asks; `selecting_a_row_scrolls_to_it`
 checks a row the app selects from
 none is scrolled into view. `screenshots` (ignored, needs a GPU) installs partman-3d with the
 harness's own wgpu device and renders every card in dark and light, the app's workflow's Choose parts and Details, the price check dialog,

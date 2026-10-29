@@ -119,7 +119,8 @@ struct Proof {
     unit_pictures: Vec<Option<egui::TextureHandle>>,
     view: partman_3d::View,
     model: Model,
-    /// The agent sidebar, made up, open or not and as wide as the user made it
+    /// The agent sidebar, its agent made up, open or not and as wide as the
+    /// user made it
     agent: agent::Agent,
     sidebar_open: bool,
     sidebar_width: Option<f32>,
@@ -653,20 +654,26 @@ mod tests {
         }
     }
 
-    /// The agent sidebar slides open by its control, with its made-up
-    /// transcript, and the agent's question is answered.
+    /// The agent sidebar slides open by its control, partman-agent's
+    /// panel in it, its made-up agent ready below the made-up transcript,
+    /// and the grant it asks for answered.
     #[test]
     fn the_agent_sidebar_opens_and_answers() {
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).build_ui_state(|ui, p: &mut Proof| p.show(ui), Proof::new(None, None, None, None));
         h.run();
         assert!(h.query_by_label("Fake agent").is_none(), "shut to start");
         h.get_by_label("Agent panel").click();
-        // Sliding open
-        h.run_steps(30);
-        assert!(h.query_by_label("Fake agent").is_some());
-        h.get_by_label("Allow").click();
+        // Sliding open, and the made-up agent starting
+        let t = std::time::Instant::now();
+        while h.query_by_label("Fake agent 1.0 is ready.").is_none() {
+            assert!(t.elapsed().as_secs() < 10, "the made-up agent never started");
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            h.step();
+        }
+        assert!(h.query_by_label_contains("compacted the conversation").is_some(), "the made-up transcript above");
+        h.get_by_label("Allow for this task").click();
         h.run_steps(3);
-        assert!(h.query_by_label("Allowed.").is_some() && h.query_by_label("Deny").is_none());
+        assert!(h.query_by_label("Allow for this task").is_none() && !h.state().agent.asks());
     }
 
     /// The app's workflow: the board its first step, a step ahead that
@@ -810,10 +817,15 @@ mod tests {
             h.get_by_label("Cards").click();
             h.run_steps(10);
             h.get_by_label("Agent panel").click();
+            let t = std::time::Instant::now();
+            while h.query_by_label("Fake agent 1.0 is ready.").is_none() && t.elapsed().as_secs() < 10 {
+                std::thread::sleep(std::time::Duration::from_millis(20));
+                h.step();
+            }
             h.run_steps(30);
-            h.get_by_role(egui::accesskit::Role::MultilineTextInput).focus();
+            h.get_by_label("Message the agent").focus();
             h.run_steps(2);
-            h.get_by_role(egui::accesskit::Role::MultilineTextInput).type_text("Which errata apply to rev Y?");
+            h.get_by_label("Message the agent").type_text("Which errata apply to rev Y?");
             h.run_steps(5);
             h.render().unwrap().save(dir.join(format!("proof-{theme}-agent.png"))).unwrap();
         }
