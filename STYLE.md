@@ -354,6 +354,8 @@ search result is selectable, it is only selectable through a checkbox.
 
 `[buttons.download]` A download button is always an open box with a downarrow.
 
+`[buttons.edit]` An edit button is always a pen.
+
 `[buttons.open]` A follow link or open elsewhere, or open external app, should always
 be a box with an arrow pointing up and out of it towards the right.
 

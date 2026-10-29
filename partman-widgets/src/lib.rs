@@ -70,6 +70,8 @@ pub enum Icon {
     MoveDown,
     /// A check mark: marking something checked, verified or done
     Check,
+    /// A pen, its nib down to the left: editing something
+    Edit,
 }
 
 impl Icon {
@@ -84,6 +86,7 @@ impl Icon {
             Icon::MoveUp => "Move up",
             Icon::MoveDown => "Move down",
             Icon::Check => "Check",
+            Icon::Edit => "Edit",
         }
     }
 
@@ -135,6 +138,13 @@ impl Icon {
             }
             Icon::Check => {
                 shapes.push(line(&[(0.20, 0.54), (0.42, 0.76), (0.82, 0.26)]));
+            }
+            Icon::Edit => {
+                // The body's outline from the nib round, then the band
+                // where the nib meets the body and one near its end
+                shapes.push(line(&[(0.18, 0.82), (0.38, 0.74), (0.82, 0.30), (0.70, 0.18), (0.26, 0.62), (0.18, 0.82)]));
+                shapes.push(line(&[(0.26, 0.62), (0.38, 0.74)]));
+                shapes.push(line(&[(0.60, 0.28), (0.72, 0.40)]));
             }
         }
         painter.extend(shapes);
@@ -340,7 +350,7 @@ mod tests {
         let mut h = egui_kittest::Harness::new_ui_state(
             |ui, clicks: &mut i32| {
                 ui.horizontal(|ui| {
-                    for i in [Icon::Delete, Icon::Download, Icon::Open, Icon::Reload, Icon::MoveUp, Icon::MoveDown, Icon::Check] {
+                    for i in [Icon::Delete, Icon::Download, Icon::Open, Icon::Reload, Icon::MoveUp, Icon::MoveDown, Icon::Check, Icon::Edit] {
                         if icon_button(ui, i).clicked() {
                             *clicks += 1;
                         }
@@ -354,17 +364,17 @@ mod tests {
             clicks,
         );
         h.run();
-        for name in ["Delete", "Download", "Open", "Reload", "Move up", "Move down", "Check"] {
+        for name in ["Delete", "Download", "Open", "Reload", "Move up", "Move down", "Check", "Edit"] {
             h.get_by_label(name).click();
             h.run();
         }
-        assert_eq!(*h.state(), 7);
+        assert_eq!(*h.state(), 8);
         h.get_by_label("Delete the selected rows").click();
         h.run();
-        assert_eq!(*h.state(), 7, "disabled");
+        assert_eq!(*h.state(), 8, "disabled");
         h.get_by_label("Partman").click();
         h.run();
-        assert_eq!(*h.state(), 17, "named by its text");
+        assert_eq!(*h.state(), 18, "named by its text");
         clicks = *h.state();
         let _ = clicks;
     }

@@ -13,7 +13,7 @@ sections of the toolbox's `STYLE.md`.
   own, with `icon_spacing` set to an em for them.
 - `explanation(ui, text)`: a blank row, then the text.
 - `Icon`: `Delete`, `Download`, `Open`, `Reload`, `MoveUp`, `MoveDown`,
-  `Check`,
+  `Check`, `Edit`,
   with `name()` and `paint(painter, rect, stroke)`.
 - `AgentButton::new(task)`, then `color(..)` (`AGENT_RED` by default),
   `family(..)` (a bold font family for the A) and `enabled(..)`, then
