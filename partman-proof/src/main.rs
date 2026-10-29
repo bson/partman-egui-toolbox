@@ -5,7 +5,11 @@
 //! buttons on a board of cards, each card made to show some of how they
 //! look and behave, to be seen in light and dark without an app.
 
+mod agent;
+mod step;
+
 use std::collections::BTreeSet;
+use std::sync::mpsc;
 
 use egui::{RichText, Ui};
 use partman_card::{Card, Colors, Layout};
@@ -13,19 +17,49 @@ use partman_table::{Col, Select, SortBy, Table};
 use partman_widgets::{AgentButton, Icon, IconButton, blank_row, check, explanation, radio};
 
 /// The cards, by key and tab title.
-const CARDS: [(&str, &str); 6] = [
+const CARDS: [(&str, &str); 8] = [
     ("many", "Selecting many"),
     ("one", "Selecting one"),
     ("none", "No selection"),
     ("page", "A page"),
     ("buttons", "Buttons and text"),
     ("agents", "Agent tasks"),
+    ("symbol", "KiCad symbol"),
+    ("3d", "3D model"),
 ];
 
 /// The tables in one stack, the rest in another.
-const DEFAULT: [&[&str]; 2] = [&["many", "one", "none", "page"], &["buttons", "agents"]];
+const DEFAULT: [&[&str]; 2] = [&["many", "one", "none", "page"], &["buttons", "agents", "symbol", "3d"]];
+
+/// The STM32F103RGT6's symbol, a PNG for each of its units, as KiCad
+/// plots them (kicad-cli sym export svg, then at 400 dpi on white).
+const UNITS: [&[u8]; 6] = [
+    include_bytes!("../assets/STM32F103RGT6TR-unit1.png"),
+    include_bytes!("../assets/STM32F103RGT6TR-unit2.png"),
+    include_bytes!("../assets/STM32F103RGT6TR-unit3.png"),
+    include_bytes!("../assets/STM32F103RGT6TR-unit4.png"),
+    include_bytes!("../assets/STM32F103RGT6TR-unit5.png"),
+    include_bytes!("../assets/STM32F103RGT6TR-unit6.png"),
+];
+
+/// Its package's model, KiCad's own, as Partman shows a part's.
+const MODEL: &str = include_str!("../assets/LQFP-64_10x10mm_P0.5mm.step");
+
+/// The 3D model, made into triangles on a thread the first time it's shown
+/// where it can be drawn.
+#[derive(Default)]
+enum Model {
+    #[default]
+    Unmade,
+    Making(mpsc::Receiver<Result<partman_3d::Scene, String>>),
+    Made(Result<partman_3d::Scene, String>),
+}
 
 const LAYOUT: &str = "layout";
+/// The agent sidebar's width, as an app keeps it with its agent settings
+const SIDEBAR_WIDTH: &str = "sidebar-width";
+/// Its input's height, the same
+const INPUT_HEIGHT: &str = "agent-input-height";
 
 /// Parts, made up, for rows: reference, value, package, quantity.
 fn parts(n: usize) -> Vec<(String, String, &'static str, u32)> {
@@ -56,10 +90,19 @@ struct Proof {
     said: String,
     toggles: [bool; 2],
     choice: usize,
+    /// The symbol's unit shown, and each unit's picture once loaded
+    unit: usize,
+    unit_pictures: Vec<Option<egui::TextureHandle>>,
+    view: partman_3d::View,
+    model: Model,
+    /// The agent sidebar, made up, open or not and as wide as the user made it
+    agent: agent::Agent,
+    sidebar_open: bool,
+    sidebar_width: Option<f32>,
 }
 
 impl Proof {
-    fn new(layout: Option<Layout>) -> Proof {
+    fn new(layout: Option<Layout>, sidebar_width: Option<f32>, input_height: Option<f32>) -> Proof {
         let many = parts(60);
         let many_keys = many.iter().map(|p| p.0.clone()).collect();
         Proof {
@@ -75,6 +118,13 @@ impl Proof {
             said: String::new(),
             toggles: [true, false],
             choice: 0,
+            unit: 0,
+            unit_pictures: vec![None; UNITS.len()],
+            view: partman_3d::View::default(),
+            model: Model::Unmade,
+            agent: agent::Agent::new(input_height),
+            sidebar_open: false,
+            sidebar_width,
         }
     }
 
@@ -100,6 +150,11 @@ impl Proof {
                 }
             });
         });
+        // Beside the board, as an app's agent panel is beside its work area
+        let asks = self.agent.asks();
+        partman_sidebar::Sidebar::new("proof-agent", "Agent panel", &mut self.sidebar_open, &mut self.sidebar_width).attention(asks).show(ui, &partman_sidebar::Colors::from_visuals(ui.visuals()), |ui| {
+            self.agent.show(ui, &mut self.said);
+        });
         let colors = Colors::from_visuals(ui.visuals());
         egui::CentralPanel::default().frame(egui::Frame::new().fill(colors.canvas).inner_margin(12)).show(ui, |ui| {
             let cards: Vec<Card> = CARDS.iter().map(|(key, title)| Card { key, title, loading: false, close: false }).collect();
@@ -111,6 +166,8 @@ impl Proof {
                 "page" => self.page_card(ui),
                 "buttons" => self.buttons_card(ui),
                 "agents" => self.agents_card(ui),
+                "symbol" => self.symbol_card(ui),
+                "3d" => self.model_card(ui),
                 _ => {}
             });
             self.layout = layout;
@@ -364,6 +421,84 @@ fn needs(sel: &[String], what: &str) -> String {
     if sel.is_empty() { format!("{what}; select some first") } else { what.to_string() }
 }
 
+impl Proof {
+    /// A symbol's unit at a time, on white as KiCad's paper is, whatever
+    /// the theme.
+    fn symbol_card(&mut self, ui: &mut Ui) {
+        ui.label("The STM32F103RGT6's KiCad symbol, as KiCad plots it, a unit at a time.");
+        ui.horizontal(|ui| {
+            for i in 0..UNITS.len() {
+                let letter = (b'A' + i as u8) as char;
+                if ui.selectable_label(self.unit == i, format!("Unit {letter}")).on_hover_text(format!("Show the symbol's unit {letter}")).clicked() {
+                    self.unit = i;
+                }
+            }
+        });
+        let i = self.unit;
+        if self.unit_pictures[i].is_none() {
+            match image::load_from_memory(UNITS[i]) {
+                Ok(img) => {
+                    let rgba = img.to_rgba8();
+                    let picture = egui::ColorImage::from_rgba_unmultiplied([rgba.width() as usize, rgba.height() as usize], &rgba);
+                    self.unit_pictures[i] = Some(ui.ctx().load_texture(format!("proof-unit-{i}"), picture, egui::TextureOptions::LINEAR));
+                }
+                Err(e) => {
+                    ui.label(format!("Unit {} can't be read: {e}", i + 1));
+                    return;
+                }
+            }
+        }
+        if let Some(t) = &self.unit_pictures[i] {
+            // At 400 dpi, half its pixels as points is about the size
+            // KiCad shows it at
+            let size = t.size_vec2() / 2.0;
+            let size = if size.x > ui.available_width() { size * (ui.available_width() / size.x) } else { size };
+            ui.add(egui::Image::new((t.id(), size)));
+        }
+    }
+
+    /// The package's model, turned about with the pointer; drawn by the GPU,
+    /// so not in the automated tests.
+    fn model_card(&mut self, ui: &mut Ui) {
+        ui.label("The STM32F103RGT6's package, LQFP-64, KiCad's model. Drag to turn it, right-drag to move it, scroll to zoom, double-click to put it back.");
+        ui.label(RichText::new("Not in the automated tests: drawing it needs a GPU, which the tests are kept from depending on.").weak());
+        if !partman_3d::installed(ui.ctx()) {
+            // The canvas says why there's nothing to see
+            partman_3d::canvas(ui, &mut self.view, "LQFP-64", partman_3d::Scene::default, 300.0);
+            return;
+        }
+        if matches!(self.model, Model::Unmade) {
+            let (tx, rx) = mpsc::channel();
+            let ctx = ui.ctx().clone();
+            std::thread::spawn(move || {
+                let _ = tx.send(step::scene(MODEL));
+                ctx.request_repaint();
+            });
+            self.model = Model::Making(rx);
+        }
+        if let Model::Making(rx) = &self.model
+            && let Ok(made) = rx.try_recv()
+        {
+            self.model = Model::Made(made);
+        }
+        match &self.model {
+            Model::Made(Ok(scene)) => {
+                let height = ui.available_height().clamp(240.0, 600.0);
+                partman_3d::canvas(ui, &mut self.view, "LQFP-64", || scene.clone(), height);
+            }
+            Model::Made(Err(e)) => {
+                ui.label(format!("The model can't be shown: {e}"));
+            }
+            _ => {
+                ui.horizontal(|ui| {
+                    ui.spinner();
+                    ui.label("Making the model's triangles…");
+                });
+            }
+        }
+    }
+}
+
 const ICONS: [Icon; 8] = [Icon::Delete, Icon::Download, Icon::Open, Icon::Reload, Icon::MoveUp, Icon::MoveDown, Icon::Check, Icon::Edit];
 
 /// Nothing to do on rows: no selection column, links in a column of
@@ -400,6 +535,8 @@ impl eframe::App for Proof {
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, LAYOUT, &self.layout);
+        eframe::set_value(storage, SIDEBAR_WIDTH, &self.sidebar_width);
+        eframe::set_value(storage, INPUT_HEIGHT, &self.agent.input_height);
     }
 }
 
@@ -408,7 +545,19 @@ fn main() -> eframe::Result {
         viewport: egui::ViewportBuilder::default().with_title("Toolbox proof").with_app_id("partman-proof").with_inner_size([1100.0, 800.0]),
         ..Default::default()
     };
-    eframe::run_native("partman-proof", options, Box::new(|cc| Ok(Box::new(Proof::new(cc.storage.and_then(|s| eframe::get_value(s, LAYOUT)))))))
+    eframe::run_native(
+        "partman-proof",
+        options,
+        Box::new(|cc| {
+            if let Some(rs) = &cc.wgpu_render_state {
+                partman_3d::install(&cc.egui_ctx, rs);
+            }
+            let layout = cc.storage.and_then(|s| eframe::get_value(s, LAYOUT));
+            let width = cc.storage.and_then(|s| eframe::get_value::<Option<f32>>(s, SIDEBAR_WIDTH)).flatten();
+            let input = cc.storage.and_then(|s| eframe::get_value::<Option<f32>>(s, INPUT_HEIGHT)).flatten();
+            Ok(Box::new(Proof::new(layout, width, input)))
+        }),
+    )
 }
 
 #[cfg(test)]
@@ -419,9 +568,9 @@ mod tests {
     /// Every card's tab brings it up, with what it's to show.
     #[test]
     fn every_card_shows() {
-        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).build_ui_state(|ui, p: &mut Proof| p.show(ui), Proof::new(None));
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).build_ui_state(|ui, p: &mut Proof| p.show(ui), Proof::new(None, None, None));
         h.run();
-        for (title, shows) in [("Selecting many", "Agent: Review the selection"), ("Selecting one", "Select a row"), ("No selection", "Datasheet"), ("A page", "Select Item 01"), ("Buttons and text", "Heading"), ("Agent tasks", "Agent: Find the part's documents")] {
+        for (title, shows) in [("Selecting many", "Agent: Review the selection"), ("Selecting one", "Select a row"), ("No selection", "Datasheet"), ("A page", "Select Item 01"), ("Buttons and text", "Heading"), ("Agent tasks", "Agent: Find the part's documents"), ("KiCad symbol", "Unit F")] {
             h.get_by_label(title).click();
             // A fitted stack takes a few frames to its card's height
             h.run_steps(10);
@@ -430,10 +579,26 @@ mod tests {
         }
     }
 
+    /// The agent sidebar slides open by its control, with its made-up
+    /// transcript, and the agent's question is answered.
+    #[test]
+    fn the_agent_sidebar_opens_and_answers() {
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).build_ui_state(|ui, p: &mut Proof| p.show(ui), Proof::new(None, None, None));
+        h.run();
+        assert!(h.query_by_label("Fake agent").is_none(), "shut to start");
+        h.get_by_label("Agent panel").click();
+        // Sliding open
+        h.run_steps(30);
+        assert!(h.query_by_label("Fake agent").is_some());
+        h.get_by_label("Allow").click();
+        h.run_steps(3);
+        assert!(h.query_by_label("Allowed.").is_some() && h.query_by_label("Deny").is_none());
+    }
+
     /// The app selecting a row from none scrolls the table to it.
     #[test]
     fn selecting_a_row_scrolls_to_it() {
-        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).build_ui_state(|ui, p: &mut Proof| p.show(ui), Proof::new(None));
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).build_ui_state(|ui, p: &mut Proof| p.show(ui), Proof::new(None, None, None));
         h.run();
         h.get_by_label("Selecting one").click();
         h.run();
@@ -453,10 +618,22 @@ mod tests {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../tmp");
         std::fs::create_dir_all(&dir).unwrap();
         for (theme, visuals) in [("dark", egui::Visuals::dark()), ("light", egui::Visuals::light())] {
-            let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).wgpu().build_ui_state(|ui, p: &mut Proof| p.show(ui), Proof::new(None));
+            // partman-3d drawing with the harness's own device, as it would
+            // with eframe's
+            let rs = egui_kittest::wgpu::create_render_state(egui_kittest::wgpu::default_wgpu_setup(), eframe::egui_wgpu::RendererOptions::default());
+            let renderer = egui_kittest::wgpu::WgpuTestRenderer::from_render_state(rs.clone());
+            let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1100.0, 800.0)).renderer(renderer).build_ui_state(
+                move |ui, p: &mut Proof| {
+                    if !partman_3d::installed(ui.ctx()) {
+                        partman_3d::install(ui.ctx(), &rs);
+                    }
+                    p.show(ui)
+                },
+                Proof::new(None, None, None),
+            );
             h.ctx.set_visuals(visuals);
             h.run_steps(10);
-            for (n, (_, title)) in CARDS.iter().enumerate() {
+            for (n, (key, title)) in CARDS.iter().enumerate() {
                 h.get_by_label(title).click();
                 h.run_steps(10);
                 if *title == "Selecting many" {
@@ -470,8 +647,24 @@ mod tests {
                     h.event(egui::Event::MouseWheel { unit: egui::MouseWheelUnit::Point, delta: egui::vec2(0.0, -70.0), phase: egui::TouchPhase::Move, modifiers: egui::Modifiers::NONE });
                     h.run_steps(10);
                 }
+                if *key == "3d" {
+                    // Its triangles made on a thread
+                    let t = std::time::Instant::now();
+                    while !matches!(h.state().model, Model::Made(_)) && t.elapsed().as_secs() < 30 {
+                        std::thread::sleep(std::time::Duration::from_millis(50));
+                        h.step();
+                    }
+                    h.run_steps(5);
+                }
                 h.render().unwrap().save(dir.join(format!("proof-{theme}-{n}.png"))).unwrap();
             }
+            h.get_by_label("Agent panel").click();
+            h.run_steps(30);
+            h.get_by_role(egui::accesskit::Role::MultilineTextInput).focus();
+            h.run_steps(2);
+            h.get_by_role(egui::accesskit::Role::MultilineTextInput).type_text("Which errata apply to rev Y?");
+            h.run_steps(5);
+            h.render().unwrap().save(dir.join(format!("proof-{theme}-agent.png"))).unwrap();
         }
     }
 }

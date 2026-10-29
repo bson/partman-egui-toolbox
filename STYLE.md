@@ -252,6 +252,10 @@ preferred width.  The preferred width is saved with the other agent
 settings.  When slide open the width is capped to the entire work area
 width.
 
+`[sidebar.input-resize]` The text box for writing to the agent can be resized by dragging its
+top edge.  The size it's left at becomes its size from then on, and is
+saved with the other agent settings, as the sidebar's width is.
+
 ## General Layout `[layout]`
 
 ### Vertical spacing `[layout.spacing]`
@@ -406,6 +410,15 @@ blank row insert above it.
 
 `[buttons.agent-line]` When there are multiple buttons, always put agentic task launcher
 buttons on a separate line.
+
+`[buttons.enter-arrow]` When typing in a text box and pressing Enter has an effect, such as
+sending what's typed to an agent, there is no button for it underneath
+the box.  Instead a fat blue right arrow sits in the box's bottom right
+corner, as saturated and bright as the A on agent task buttons.  Enter
+does the same as pressing the arrow.  A new line is typed the
+customary ways for the platform: Option-Enter on macOS, Alt-Enter
+elsewhere, and Shift-Enter on all of them.  Without the button the box
+sits further down, and the box and its action read as one element.
 
 ## Scrollbar behavior `[scroll]`
 

@@ -4,7 +4,8 @@
 //! The small parts of the toolbox's style guide (STYLE.md), for any egui
 //! app following it: the blank row that sets groups apart, checkboxes and
 //! radio buttons with their label an em away, text explaining a button
-//! put before it, and the icon buttons that always mean the same thing.
+//! put before it, the icon buttons that always mean the same thing, and a
+//! text box that Enter acts on, by an arrow in its corner.
 
 use egui::{Color32, Pos2, Rect, Response, Sense, Stroke, TextStyle, Ui, Vec2, WidgetInfo, WidgetText, WidgetType, vec2};
 
@@ -285,6 +286,164 @@ impl AgentButton {
     }
 }
 
+/// A send box's arrow: the agent button's A's saturation and brightness,
+/// in blue.
+pub const SEND_BLUE: Color32 = Color32::from_rgb(0x3f, 0x8a, 0xe0);
+
+/// A text box Enter acts on (sending what's typed to an agent, say), as
+/// the style guide has it: no button under it, but a fat blue arrow in its
+/// bottom right corner that does what Enter does. A new line is typed with
+/// Alt-Enter (Option-Enter on macOS) or Shift-Enter. Its height is the
+/// app's to keep, changed by dragging its top edge.
+pub struct SendBox<'a> {
+    id: egui::Id,
+    text: &'a mut String,
+    height: &'a mut Option<f32>,
+    hint: String,
+    name: String,
+    enabled: bool,
+}
+
+/// What came of showing it.
+pub struct SendShown {
+    /// Enter was pressed, or the arrow, with something typed: the app
+    /// takes the text
+    pub sent: bool,
+    /// Its height was dragged to another and let go, for the app to save
+    pub resized: bool,
+    /// The text box's
+    pub response: Response,
+}
+
+impl<'a> SendBox<'a> {
+    /// The box under id, its text and height the app's, kept between
+    /// frames; with no height, three rows.
+    pub fn new(id: impl std::hash::Hash + std::fmt::Debug, text: &'a mut String, height: &'a mut Option<f32>) -> SendBox<'a> {
+        SendBox { id: egui::Id::new(id), text, height, hint: String::new(), name: "Send".into(), enabled: true }
+    }
+
+    /// What's shown in it while empty.
+    pub fn hint(mut self, hint: impl Into<String>) -> SendBox<'a> {
+        self.hint = hint.into();
+        self
+    }
+
+    /// What Enter and the arrow do, as the arrow is named: "Send" unless
+    /// given.
+    pub fn name(mut self, name: impl Into<String>) -> SendBox<'a> {
+        self.name = name.into();
+        self
+    }
+
+    /// Whether Enter and the arrow act now; the box can still be typed in.
+    pub fn enabled(mut self, enabled: bool) -> SendBox<'a> {
+        self.enabled = enabled;
+        self
+    }
+
+    pub fn show(self, ui: &mut Ui) -> SendShown {
+        let row = row_height(ui);
+        let margin = ui.spacing().button_padding.x;
+        let least = 2.0 * row + 2.0 * margin;
+        // At most half the window: what's left where it's drawn can be no
+        // more than it took last frame, in a panel sized to its contents
+        let most = (ui.ctx().content_rect().height() / 2.0).max(least);
+        let h = self.height.unwrap_or(3.0 * row + 2.0 * margin).clamp(least, most);
+        let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), h), Sense::hover());
+
+        // Its top edge, a few points either side, drags its height: it sits
+        // at the bottom of what it's in, so it grows upward
+        let grip = Rect::from_min_max(rect.min - vec2(0.0, 3.0), egui::pos2(rect.max.x, rect.min.y + 3.0));
+        let g = ui.interact(grip, self.id.with("grip"), Sense::drag()).on_hover_cursor(egui::CursorIcon::ResizeVertical).on_hover_text("Drag to make it taller or shorter");
+        if g.dragged() {
+            *self.height = Some((h - g.drag_delta().y).clamp(least, most));
+        }
+        let resized = g.drag_stopped();
+
+        let can = self.enabled && !self.text.trim().is_empty();
+        let edit_id = self.id.with("text");
+        // Enter is taken before the box sees it, as egui's box has one key
+        // for a new line: Alt-Enter, which Shift-Enter is made into
+        let mut entered = false;
+        if ui.memory(|m| m.has_focus(edit_id)) {
+            ui.input_mut(|i| {
+                i.events.retain_mut(|e| match e {
+                    egui::Event::Key { key: egui::Key::Enter, pressed, modifiers, .. } => {
+                        if modifiers.shift && !modifiers.alt {
+                            modifiers.shift = false;
+                            modifiers.alt = true;
+                            true
+                        } else if modifiers.is_none() {
+                            entered |= *pressed;
+                            false
+                        } else {
+                            true
+                        }
+                    }
+                    _ => true,
+                })
+            });
+        }
+
+        let focused = ui.memory(|m| m.has_focus(edit_id));
+        let v = ui.visuals();
+        let stroke = if focused { v.selection.stroke } else { v.widgets.inactive.bg_stroke };
+        ui.painter().rect(rect, v.widgets.inactive.corner_radius, v.extreme_bg_color, stroke, egui::StrokeKind::Inside);
+
+        // The arrow's square, at the bottom right, the text kept left of it
+        let a = (row * 1.4).round();
+        let arrow = Rect::from_min_size(rect.max - vec2(a + margin / 2.0, a + margin / 2.0), vec2(a, a));
+        let text_rect = Rect::from_min_max(rect.min + vec2(margin, margin / 2.0), egui::pos2(arrow.min.x - margin / 2.0, rect.max.y - margin / 2.0));
+        let mut child = ui.new_child(egui::UiBuilder::new().max_rect(text_rect).layout(egui::Layout::top_down(egui::Align::Min)).id_salt(self.id.with("box")));
+        let response = egui::ScrollArea::vertical()
+            .id_salt(self.id.with("scroll"))
+            .auto_shrink([false, false])
+            .show(&mut child, |ui| {
+                ui.add(
+                    egui::TextEdit::multiline(self.text)
+                        .id(edit_id)
+                        .frame(egui::Frame::NONE)
+                        .hint_text(self.hint.as_str())
+                        .desired_width(f32::INFINITY)
+                        .min_size(vec2(text_rect.width(), text_rect.height()))
+                        .return_key(egui::KeyboardShortcut::new(egui::Modifiers::ALT, egui::Key::Enter)),
+                )
+            })
+            .inner;
+
+        let pressed = ui.interact(arrow, self.id.with("arrow"), if can { Sense::click() } else { Sense::hover() });
+        let name = self.name.clone();
+        pressed.widget_info(|| WidgetInfo::labeled(WidgetType::Button, can, &name));
+        let newline = if ui.ctx().os() == egui::os::OperatingSystem::Mac { "Option-Enter" } else { "Alt-Enter" };
+        let tip = if can {
+            format!("{} (Enter); {newline} or Shift-Enter for a new line", self.name)
+        } else {
+            format!("{} (Enter), once something's written; {newline} or Shift-Enter for a new line", self.name)
+        };
+        let pressed = pressed.on_hover_text(tip);
+        let color = if !can {
+            ui.visuals().weak_text_color()
+        } else if pressed.hovered() {
+            SEND_BLUE.lerp_to_gamma(Color32::WHITE, 0.2)
+        } else {
+            SEND_BLUE
+        };
+        paint_arrow(ui.painter(), arrow, color);
+
+        SendShown { sent: can && (entered || pressed.clicked()), resized, response }
+    }
+}
+
+/// A fat right arrow filling most of a square: a broad shaft, and a head
+/// as tall as most of it.
+fn paint_arrow(painter: &egui::Painter, r: Rect, color: Color32) {
+    let at = |x: f32, y: f32| egui::pos2(r.left() + x * r.width(), r.top() + y * r.height());
+    let shaft = vec![at(0.14, 0.38), at(0.56, 0.38), at(0.56, 0.62), at(0.14, 0.62)];
+    let head = vec![at(0.50, 0.16), at(0.88, 0.50), at(0.50, 0.84)];
+    painter.add(egui::Shape::convex_polygon(shaft, color, Stroke::NONE));
+    painter.add(egui::Shape::convex_polygon(head, color, Stroke::NONE));
+}
+
 /// An icon button, enabled: its response.
 pub fn icon_button(ui: &mut Ui, icon: Icon) -> Response {
     IconButton::new(icon).show(ui)
@@ -294,6 +453,76 @@ pub fn icon_button(ui: &mut Ui, icon: Icon) -> Response {
 mod tests {
     use super::*;
     use egui_kittest::kittest::Queryable;
+
+    struct Typed {
+        text: String,
+        height: Option<f32>,
+        sent: Vec<String>,
+        resized: bool,
+    }
+
+    fn send_box() -> egui_kittest::Harness<'static, Typed> {
+        egui_kittest::Harness::builder().with_size(vec2(400.0, 300.0)).build_ui_state(
+            |ui, t: &mut Typed| {
+                ui.add_space(150.0);
+                let shown = SendBox::new("send", &mut t.text, &mut t.height).hint("Write here").show(ui);
+                if shown.sent {
+                    t.sent.push(std::mem::take(&mut t.text));
+                }
+                t.resized |= shown.resized;
+            },
+            Typed { text: String::new(), height: None, sent: vec![], resized: false },
+        )
+    }
+
+    /// Enter sends, Shift-Enter and Alt-Enter make a new line, the arrow
+    /// sends, and nothing's sent while empty.
+    #[test]
+    fn enter_sends_and_its_modifiers_make_lines() {
+        let mut h = send_box();
+        h.run();
+        h.get_by_role(egui::accesskit::Role::MultilineTextInput).focus();
+        h.run();
+        h.key_press(egui::Key::Enter);
+        h.run();
+        assert!(h.state().sent.is_empty() && h.state().text.is_empty(), "nothing to send, and no new line");
+        h.get_by_role(egui::accesskit::Role::MultilineTextInput).type_text("one");
+        h.run();
+        h.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::Enter);
+        h.run();
+        h.key_press_modifiers(egui::Modifiers::ALT, egui::Key::Enter);
+        h.run();
+        assert_eq!(h.state().text, "one\n\n");
+        h.key_press(egui::Key::Enter);
+        h.run();
+        assert_eq!(h.state().sent, ["one\n\n"]);
+        h.state_mut().text = "two".into();
+        h.run();
+        h.get_by_label("Send").click();
+        h.run();
+        assert_eq!(h.state().sent.len(), 2, "by the arrow");
+    }
+
+    /// Dragging its top edge up makes it taller, kept by the app and said
+    /// once let go.
+    #[test]
+    fn its_top_edge_resizes_it() {
+        let mut h = send_box();
+        h.run();
+        // The box's top, where the space above it ends
+        let edge = egui::pos2(200.0, 150.0 + 1.0);
+        h.hover_at(edge);
+        h.run();
+        h.drag_at(edge);
+        h.run();
+        h.hover_at(edge - vec2(0.0, 40.0));
+        h.run();
+        h.drop_at(edge - vec2(0.0, 40.0));
+        h.run();
+        let tall = h.state().height.expect("kept");
+        assert!(tall > 80.0, "{tall}");
+        assert!(h.state().resized);
+    }
 
     #[test]
     fn a_blank_row_is_a_row_and_a_half() {

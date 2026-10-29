@@ -11,6 +11,13 @@ components look and behave, for Partman, the pin planner and the apps
 like them. A change to how a component looks or behaves follows it, or
 starts as a change to it.
 
+**To see the components,** run the proof sheet, a small program showing
+them on a board of cards, in dark and light, without an app:
+
+```sh
+cargo run -p partman-proof
+```
+
 ## Components
 
 | Crate | What it is |
@@ -55,12 +62,6 @@ partman-workflow = { path = "../partman-egui-toolbox/partman-workflow" }
 
 ```sh
 cargo test
-```
-
-To see the components without an app:
-
-```sh
-cargo run -p partman-proof
 ```
 
 ## License

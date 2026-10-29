@@ -11,10 +11,18 @@ publish = false
 [dependencies]
 egui.workspace = true
 eframe = { version = "0.36", default-features = false, features = ["wgpu", "wayland", "x11", "default_fonts", "persistence"] }
+partman-3d = { path = "../partman-3d" }
 partman-card = { path = "../partman-card" }
 partman-scroll = { path = "../partman-scroll" }
+partman-sidebar = { path = "../partman-sidebar" }
 partman-table = { path = "../partman-table" }
 partman-widgets = { path = "../partman-widgets" }
+# The symbol's units, prerendered as PNG
+image = { version = "0.25", default-features = false, features = ["png"] }
+# The 3D model (STEP) made into triangles, pure Rust, as Partman does
+truck-stepio = "0.3"
+truck-meshalgo = "0.4"
+ruststep = "0.4"
 
 [dev-dependencies]
 egui_kittest = { workspace = true, features = ["wgpu"] }

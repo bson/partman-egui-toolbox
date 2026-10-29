@@ -16,6 +16,11 @@ following it:
   double carets to move up and down, and a check mark to mark something
   checked or verified. They're drawn, not taken from a
   font, so they look the same in every app and theme.
+- **Send boxes.** A text box that Enter acts on, sending what's written
+  to an agent say: no button under it, but a fat blue arrow in its
+  corner doing what Enter does. Alt-Enter (Option-Enter on a Mac) or
+  Shift-Enter makes a new line. Its top edge drags it taller or shorter,
+  and the app keeps the height.
 
 ## Using it
 
@@ -32,6 +37,9 @@ readers by what it does, and can be given a fuller name and disabled.
 `AgentButton` is the guide's button giving an agent a task: a larger,
 slanted, bold red A, standing for "Agent", then the task, a little taller
 than other buttons; the app can give it a bold font for the A. The
+`SendBox` is the guide's text box acted on by Enter, its text and height
+the app's; it says when it was sent, for the app to take the text, and
+when it was resized, for the app to save the height. The
 guide's other button conventions are words: "Add" to add, and a
 button opening a dialog or needing more done ends in "…".
 
