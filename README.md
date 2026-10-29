@@ -1,7 +1,10 @@
 # partman-egui-toolbox
 
 Components for [egui](https://github.com/emilk/egui) apps that look and
-behave like Partman: Partman itself, the pin planner, and apps like them.
+behave like [Partman](https://git.rockgarden.net/bson/partman), the
+parts manager: Partman itself, the
+[pin planner](https://git.rockgarden.net/bson/pinplanner), which plans a
+part's pins and makes its KiCad symbol, and apps like them.
 Each follows the style and design guide, [STYLE.md](STYLE.md), so an app
 built from them is consistent with the others without reimplementing the
 guide.
