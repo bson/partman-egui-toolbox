@@ -49,10 +49,17 @@ sections of the toolbox's `STYLE.md`.
   3 points either side, drags it; `resized` is said when let go.
 
 - **Icons are line drawings** on a unit square scaled to the button, in
-  the button's text colour (weak when disabled), 1.5 points thick. A
-  font's glyphs for them vary or are missing, so they aren't used.
+  the button's text colour, 1.5 points thick. A font's glyphs for them
+  vary or are missing, so they aren't used.
 - **An icon button is square,** a row of text plus the button padding
-  above and below, framed as egui frames buttons. Disabled, it senses
-  only hover, so a click does nothing and its tooltip still shows.
+  above and below, framed as egui frames buttons; with text after the
+  icon, wider by it. Disabled, it's drawn as egui draws its own
+  disabled buttons, its inactive look faded (`Visuals::disable`), fill,
+  outline, icon and text alike: the theme's weak text colour can be
+  nearly as bright as its text, which made one with text look enabled.
+  Its text is laid out in the colour it's drawn in, not plain, as a
+  theme's `override_text_color` would be fixed in it otherwise. It
+  senses only hover, so a click does nothing and its tooltip still
+  shows.
 - **Names:** each is in its accessibility info as a button, enabled or
   not, under its icon's name or the one given; tests find it so.

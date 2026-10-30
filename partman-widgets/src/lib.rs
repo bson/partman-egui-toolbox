@@ -197,16 +197,24 @@ impl IconButton {
     pub fn show(self, ui: &mut Ui) -> Response {
         let pad = ui.spacing().button_padding;
         let side = row_height(ui) + 2.0 * pad.y;
-        let galley = self.text.as_ref().map(|t| WidgetText::from(t.as_str()).into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, TextStyle::Button));
+        // Laid out in the colour it's drawn in: laid out plain, a theme's
+        // override_text_color would be fixed in it, and the colour given
+        // when painting ignored, disabled or not
+        let font = TextStyle::Button.resolve(ui.style());
+        let galley = self.text.as_ref().map(|t| ui.painter().layout_no_wrap(t.clone(), font, Color32::PLACEHOLDER));
         let width = side + galley.as_ref().map_or(0.0, |g| g.size().x + pad.x);
         let (rect, response) = ui.allocate_exact_size(vec2(width, side), if self.enabled { Sense::click() } else { Sense::hover() });
         let name = self.name.or(self.text.clone()).unwrap_or_else(|| self.icon.name().to_string());
         let enabled = self.enabled;
         response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, &name));
         if ui.is_rect_visible(rect) {
-            let v = if enabled { ui.style().interact(&response) } else { &ui.visuals().widgets.noninteractive };
-            ui.painter().rect(rect, v.corner_radius, v.weak_bg_fill, v.bg_stroke, egui::StrokeKind::Inside);
-            let color: Color32 = if enabled { self.color.unwrap_or(v.fg_stroke.color) } else { ui.visuals().weak_text_color() };
+            // Disabled, as egui's own buttons are: their inactive look,
+            // faded; the theme's weak text colour can be nearly as bright
+            // as its text, which made one with text look enabled
+            let v = if enabled { ui.style().interact(&response) } else { &ui.visuals().widgets.inactive };
+            let fade = |c: Color32| if enabled { c } else { ui.visuals().disable(c) };
+            ui.painter().rect(rect, v.corner_radius, fade(v.weak_bg_fill), Stroke::new(v.bg_stroke.width, fade(v.bg_stroke.color)), egui::StrokeKind::Inside);
+            let color = fade(self.color.unwrap_or(v.fg_stroke.color));
             let icon = Rect::from_center_size(rect.left_center() + vec2(side / 2.0, 0.0), Vec2::splat(row_height(ui)));
             self.icon.paint(ui.painter(), icon, Stroke::new(1.5, color));
             if let Some(g) = galley {
