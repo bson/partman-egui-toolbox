@@ -616,7 +616,11 @@ pub fn board(ui: &mut Ui, t: &Colors, layout: &mut Layout, cards: &[Card], defau
                 egui::Spinner::new().size(14.0).paint_at(ui, sr);
             }
             let body = Rect::from_min_max(pos2(r.min.x, bar.max.y), r.max).shrink(PAD);
-            let mut child = ui.new_child(UiBuilder::new().max_rect(body).layout(egui::Layout::top_down(Align::Min)).id_salt(("card", &s.top)));
+            // An id of its own, not one salted from the board's: that mixes in
+            // what's drawn before, which bringing a stack forward changes, so
+            // a click raising a stack would end on a widget of another id and
+            // be lost
+            let mut child = ui.new_child(UiBuilder::new().max_rect(body).layout(egui::Layout::top_down(Align::Min)).id(board_id.with(("card", &s.top))));
             child.set_clip_rect(body.expand(PAD / 2.0).intersect(clip));
             let body = egui::ScrollArea::vertical().id_salt(("card", &s.top)).auto_shrink([false, false]).show(&mut child, |ui| {
                 content(ui, &s.top);
@@ -895,6 +899,37 @@ mod tests {
         h.drop_at(at);
         h.run_steps(2);
         assert_eq!(h.state().stacks.last().map(|s| s.top.as_str()), Some("a"));
+    }
+
+    /// A click on a button in a stack behind is the button's, bringing its
+    /// stack forward as well: the stack's contents keep their ids when the
+    /// order they're drawn in changes, so press and release meet one widget.
+    #[test]
+    fn a_click_on_a_stack_behind_is_its_buttons() {
+        use egui_kittest::kittest::{NodeT, Queryable};
+        let mut l = layout();
+        l.fitted = false;
+        l.stacks[0].set_rect(Rect::from_min_size(pos2(0.0, 0.0), vec2(300.0, 300.0)));
+        l.stacks[1].set_rect(Rect::from_min_size(pos2(320.0, 0.0), vec2(300.0, 300.0)));
+        let clicks = std::rc::Rc::new(std::cell::Cell::new(0));
+        let counted = clicks.clone();
+        let mut h = egui_kittest::Harness::builder().with_size(vec2(800.0, 600.0)).build_ui_state(
+            move |ui, l: &mut Layout| {
+                let cards: Vec<Card> = KEYS.iter().map(|k| Card { key: k, title: k, loading: false, close: false }).collect();
+                board(ui, &Colors::default(), l, &cards, DEFAULT, |ui, k| {
+                    if ui.button(format!("Press {k}")).clicked() {
+                        counted.set(counted.get() + 1);
+                    }
+                });
+            },
+            l,
+        );
+        h.run_steps(2);
+        let behind = h.state().stacks[0].top.clone();
+        h.get_by_label(&format!("Press {behind}")).click();
+        h.run_steps(2);
+        assert_eq!(clicks.get(), 1, "the click on the stack behind was lost");
+        assert_eq!(h.state().stacks.last().map(|s| s.top.clone()), Some(behind));
     }
 
     /// A combo box on the stack in front, over another stack's bar, is
