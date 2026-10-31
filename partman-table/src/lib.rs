@@ -406,7 +406,7 @@ impl<'a> Table<'a> {
                         // The whole header cell takes the click, its arrow at
                         // the right while it's the one sorted on
                         let cell = ui.max_rect();
-                        let hit = ui.interact(cell, ui.id().with(("sort", &c.title)), Sense::click()).on_hover_text("Sort by this; again, the other way");
+                        let hit = ui.interact(cell, ui.id().with(("sort", &c.title)), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text("Sort by this; again, the other way");
                         hit.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, format!("Sort by {}", c.title)));
                         if hit.clicked() || r.clicked() {
                             sort_click = Some(c.title.clone());
@@ -502,6 +502,12 @@ impl<'a> Table<'a> {
         });
         // Its rows' area, for scrolling over it to go by its height
         partman_scroll::area(ui.ctx(), &rows);
+        // A line under the header, along the top of the rows' area, which
+        // stays put as they scroll: drawn after the rows, as a striped first
+        // row's background would cover it. In the weak text's colour, as a
+        // theme's own line colours may be transparent (egui's stock dark one)
+        let under = rows.inner_rect;
+        ui.painter().hline(under.x_range(), under.top(), egui::Stroke::new(1.0, ui.visuals().weak_text_color()));
 
         // Each row's top and bottom, in the order shown, as egui_extras lays
         // them out: a row's height and the spacing below it
@@ -584,6 +590,8 @@ impl<'a> Table<'a> {
             selected.extend(kept.iter().filter(|k| !self.keys.contains(k)).cloned());
         }
         let mut reload = false;
+        // Half a row between the last row and the buttons acting on them
+        ui.add_space(row_height(ui) / 2.0);
         ui.horizontal_wrapped(|ui| {
             actions(ui, &selected);
             if self.reload && IconButton::new(Icon::Reload).show(ui).on_hover_text("Load the table again").clicked() {
