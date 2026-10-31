@@ -406,7 +406,7 @@ impl<'a> Table<'a> {
                         // The whole header cell takes the click, its arrow at
                         // the right while it's the one sorted on
                         let cell = ui.max_rect();
-                        let hit = ui.interact(cell, ui.id().with(("sort", &c.title)), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text("Sort by this; again, the other way");
+                        let hit = ui.interact(cell, self.id.with(("sort", &c.title)), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text("Sort by this; again, the other way");
                         hit.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, format!("Sort by {}", c.title)));
                         if hit.clicked() || r.clicked() {
                             sort_click = Some(c.title.clone());
@@ -767,6 +767,33 @@ mod tests {
         assert_eq!(h.state().selected, ["d"]);
         click(&mut h, "Select row 1", Modifiers::NONE);
         assert_eq!(h.state().selected, ["a"]);
+    }
+
+    /// Two tables in one ui: each header its own, sorting only its table.
+    #[test]
+    fn two_tables_in_one_ui() {
+        let keys: Vec<String> = vec!["b".into(), "a".into()];
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(600.0, 400.0)).build_ui(|ui| {
+            for name in ["one", "two"] {
+                Table::new(name, &keys).column(Col::new("Name").sort(SortBy::Text(keys.clone()))).show(
+                    ui,
+                    |r, i| {
+                        r.col(|ui| {
+                            ui.label(format!("{name} {}", keys[i]));
+                        });
+                    },
+                    |_, _| {},
+                );
+            }
+        });
+        h.run();
+        // The same id twice would be one node
+        assert_eq!(h.query_all_by_label("Sort by Name").count(), 2);
+        h.query_all_by_label("Sort by Name").nth(1).unwrap().click();
+        h.run();
+        let above = |h: &egui_kittest::Harness<'_>, x: &str, y: &str| h.get_by_label(x).rect().top() < h.get_by_label(y).rect().top();
+        assert!(above(&h, "two a", "two b"), "the second sorted");
+        assert!(above(&h, "one b", "one a"), "the first as it was");
     }
 
     /// Too wide for the room, the columns are scaled to fit it; with room,
