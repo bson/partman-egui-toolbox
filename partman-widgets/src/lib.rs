@@ -5,7 +5,8 @@
 //! app following it: the blank row that sets groups apart, checkboxes and
 //! radio buttons with their label an em away, text explaining a button
 //! put before it, the icon buttons that always mean the same thing, and a
-//! text box that Enter acts on, by an arrow in its corner.
+//! text box that Enter acts on, by an arrow in its corner, and a bar
+//! saying how far along some work is.
 
 use egui::{Color32, Pos2, Rect, Response, Sense, Stroke, TextStyle, Ui, Vec2, WidgetInfo, WidgetText, WidgetType, vec2};
 
@@ -457,6 +458,64 @@ pub fn icon_button(ui: &mut Ui, icon: Icon) -> Response {
     IconButton::new(icon).show(ui)
 }
 
+/// How far along a piece of work is: a word for what it's doing now
+/// ("Syncing"), then a bar filled from 0 to 100%, then the percentage, on
+/// one row as wide as the ui. Named "word, N%" for screen readers.
+pub struct ProgressBar {
+    done: f32,
+    word: String,
+}
+
+impl ProgressBar {
+    /// done is the part finished, 0.0 to 1.0; outside that it's clamped.
+    pub fn new(done: f32) -> ProgressBar {
+        ProgressBar { done: if done.is_nan() { 0.0 } else { done.clamp(0.0, 1.0) }, word: String::new() }
+    }
+
+    /// What it's doing now, in a word or two.
+    pub fn word(mut self, word: impl Into<String>) -> ProgressBar {
+        self.word = word.into();
+        self
+    }
+
+    pub fn show(self, ui: &mut Ui) -> Response {
+        let percent = (self.done * 100.0).floor() as u32;
+        let font = TextStyle::Body.resolve(ui.style());
+        let color = ui.visuals().text_color();
+        let word = ui.painter().layout_no_wrap(self.word.clone(), font.clone(), color);
+        // As wide as 100% always, so the bar doesn't move as the number grows
+        let widest = ui.painter().layout_no_wrap("100%".into(), font.clone(), color).size().x;
+        let number = ui.painter().layout_no_wrap(format!("{percent}%"), font, color);
+        let gap = em(ui);
+        let height = row_height(ui);
+        let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
+        let name = if self.word.is_empty() { format!("{percent}%") } else { format!("{}, {percent}%", self.word) };
+        response.widget_info(|| {
+            let mut info = WidgetInfo::labeled(WidgetType::ProgressIndicator, true, &name);
+            info.value = Some(f64::from(self.done));
+            info
+        });
+        if ui.is_rect_visible(rect) {
+            let word_w = if self.word.is_empty() { 0.0 } else { word.size().x + gap };
+            let mid = rect.center().y;
+            ui.painter().galley(egui::pos2(rect.left(), mid - word.size().y / 2.0), word, color);
+            ui.painter().galley(egui::pos2(rect.right() - number.size().x, mid - number.size().y / 2.0), number, color);
+            let track = Rect::from_min_max(egui::pos2(rect.left() + word_w, mid - height * 0.3), egui::pos2(rect.right() - widest - gap, mid + height * 0.3));
+            if track.width() > 0.0 {
+                let v = ui.visuals();
+                let radius = track.height() / 2.0;
+                ui.painter().rect(track, radius, v.extreme_bg_color, Stroke::new(1.0, v.widgets.noninteractive.bg_stroke.color), egui::StrokeKind::Inside);
+                if self.done > 0.0 {
+                    // Never thinner than it is tall, so a little progress still shows as a rounded end
+                    let fill = Rect::from_min_size(track.min, vec2((track.width() * self.done).max(track.height()), track.height()));
+                    ui.painter().rect_filled(fill, radius, v.selection.bg_fill);
+                }
+            }
+        }
+        response
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -614,5 +673,24 @@ mod tests {
         assert_eq!(*h.state(), 18, "named by its text");
         clicks = *h.state();
         let _ = clicks;
+    }
+
+    /// Named by its word and percentage, clamped to 0–100%, and as wide
+    /// as the ui whatever the number.
+    #[test]
+    fn progress_bar_says_how_far() {
+        let mut h = egui_kittest::Harness::builder().with_size(vec2(300.0, 100.0)).build_ui_state(
+            |ui, done: &mut f32| {
+                ProgressBar::new(*done).word("Syncing").show(ui);
+                ProgressBar::new(1.7).show(ui);
+            },
+            0.425_f32,
+        );
+        h.run();
+        assert!(h.query_by_label("Syncing, 42%").is_some());
+        assert!(h.query_by_label("100%").is_some());
+        *h.state_mut() = f32::NAN;
+        h.run();
+        assert!(h.query_by_label("Syncing, 0%").is_some());
     }
 }

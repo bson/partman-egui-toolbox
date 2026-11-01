@@ -36,7 +36,7 @@ cargo run -p partman-proof
 | [partman-scroll](partman-scroll/README.md) | Scrolling: a notch moves a similar share of any area, however tall, and a trackpad swipe let go of coasts. |
 | [partman-sidebar](partman-sidebar/README.md) | A sidebar, such as an agent's: a triangle on the work area's edge slides it open and shut, and it keeps the width the user drags it to. |
 | [partman-table](partman-table/README.md) | Tables: headed, adjustable and sortable columns, rows selected by checkbox, radio button or click, actions on the selection below, the selection kept in sight and marked when it's scrolled out of view, and the selection and scroll kept between runs. |
-| [partman-widgets](partman-widgets/README.md) | The small parts: blank rows, checkboxes and radio buttons with their label an em away, explanations before buttons, icon buttons that always mean the same thing, agent task buttons, and a send box that Enter acts on, by an arrow in its corner. |
+| [partman-widgets](partman-widgets/README.md) | The small parts: blank rows, checkboxes and radio buttons with their label an em away, explanations before buttons, icon buttons that always mean the same thing, agent task buttons, a send box that Enter acts on, by an arrow in its corner, and a progress bar. |
 | [partman-workflow](partman-workflow/README.md) | Workflows: a bar of the workflow's steps, an advance button on each step, a finishing one for a workflow in a dialog, and a work area that grows with its contents and scrolls only when it must. |
 
 ## Using them

@@ -420,6 +420,14 @@ customary ways for the platform: Option-Enter on macOS, Alt-Enter
 elsewhere, and Shift-Enter on all of them.  Without the button the box
 sits further down, and the box and its action read as one element.
 
+### Progress `[progress]`
+
+`[progress.bar]` Work that takes a while and can say how far along it is shows a
+progress bar: one row as wide as its area, with a very short word for what it
+is doing now at its left ("Syncing"), the bar filling from 0 to 100% after it,
+and the percentage at its right.  The bar keeps its place as the number
+grows.
+
 ## Scrollbar behavior `[scroll]`
 
 ### Adaptive speed `[scroll.speed]`

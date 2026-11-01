@@ -25,6 +25,10 @@ sections of the toolbox's `STYLE.md`.
   colour says something) and `enabled(..)`, then
   `show(ui)`; `icon_button(ui, icon)` for the plain one.
 
+- `ProgressBar::new(done)` (0.0 to 1.0, clamped, NaN as 0), then
+  `word(..)`, then `show(ui)`: the word, the bar and the percentage on one
+  row as wide as the ui, the bar ending where "100%" would start. Named
+  "word, N%" (or "N%"), a `ProgressIndicator` with `value` the fraction.
 - `SendBox::new(id, &mut text, &mut height)`, then `hint(..)`, `name(..)`
   (what Enter and the arrow do, "Send" by default) and `enabled(..)`,
   then `show(ui)`, giving `SendShown { sent, resized, response }`.

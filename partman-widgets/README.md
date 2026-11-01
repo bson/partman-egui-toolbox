@@ -21,6 +21,8 @@ following it:
   corner doing what Enter does. Alt-Enter (Option-Enter on a Mac) or
   Shift-Enter makes a new line. Its top edge drags it taller or shorter,
   and the app keeps the height.
+- **Progress bars.** How far along some work is: a word for what it's
+  doing now, a bar filling from 0 to 100%, and the percentage.
 
 ## Using it
 
